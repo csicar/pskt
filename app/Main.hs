@@ -40,6 +40,7 @@ import Language.PureScript.CoreFn
 import Language.PureScript.CoreFn.FromJSON
 import Language.PureScript.Names (runModuleName)
 import CodeGen.CoreImp
+import CodeGen.KtCore
 import Data.Text.Prettyprint.Doc.Util (putDocW)
 import Data.Text.Prettyprint.Doc (pretty)
 import Data.Text.Prettyprint.Doc.Render.Text (renderIO)
@@ -63,6 +64,7 @@ jsonToModule value =
 data CliOptions = CliOptions
   { inputFiles :: [FilePath]
   , outputDir :: FilePath
+  , printCoreFn :: Bool
   }
 
 cli :: Parser CliOptions
@@ -79,6 +81,10 @@ cli = CliOptions
     <> short 'o'
     <> metavar "FILENAME"
     <> value "kotlin/"
+    )
+  <*> switch
+    ( long "print-corefn"
+    <> help "print debug info about read corefn"
     )
 
 -- Adding program help text to the parser
@@ -100,15 +106,15 @@ main = do
   putStrLn $ show foundInputFiles
   putStrLn $ show outputPath
   for_ (concat foundInputFiles) $ \file -> do
-    processFile outputPath $ file
+    processFile opts outputPath file
   pure ()
 
-processFile :: FilePath -> FilePath -> IO ()
-processFile outputDirPath path = do
+processFile :: CliOptions -> FilePath -> FilePath -> IO ()
+processFile opts outputDirPath path = do
   jsonText <- T.decodeUtf8 <$> B.readFile path
   let mod = jsonToModule $ parseJson jsonText
   let modName = runModuleName $ moduleName mod
-  -- pPrint $ mod
+  if (printCoreFn opts) then do pPrint mod else do pure ()
   outputFile <- openFile (outputDirPath </> T.unpack modName <> ".kt") WriteMode
   renderIO outputFile (moduleToText mod)
   hClose outputFile

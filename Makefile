@@ -8,7 +8,7 @@ test: build test-codegen test-generatekt
 	kotlinc kotlin/Test.kt kotlin/Main.kt kotlin/Foreign/Test.kt -include-runtime -d kotlin/bin.jar
 
 test-generatekt: build
-	stack exec -- pskt -i "test/output/*/corefn.json" -o ./kotlin/
+	stack exec -- pskt --print-corefn -i "test/output/Main/corefn.json" -o ./kotlin/
 
 .PHONY: test-codegen
 test-codegen: build
