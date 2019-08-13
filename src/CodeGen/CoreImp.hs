@@ -94,6 +94,8 @@ instance PrintKt (Expr Ann) where
             showModule (Env mod) = print env $ moduleName mod
             addElse x = x ++ ["else ->" <+> "throw IllegalArgumentException(\"Failed pattern match in module" <> showModule env <+> pretty (displayStartEndPos sp) <> "\")"]
 
+   print env (Let _ binds inExpr) = braces $ vsep $ (print env <$> binds) ++ [print env inExpr]
+   print env a = trace (show a) ""
 
 printDecl env _ (Constructor _ tyName ctorName args) = Just $ "data class" <+> (pretty (runProperName ctorName))
    <> parens (vsep (map printConstructorArg args))
