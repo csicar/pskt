@@ -8,8 +8,9 @@ import Prelude hiding (print)
 import Control.Monad (when)
 import qualified Control.Monad.Parallel as Par
 import Data.Aeson
-import Data.Aeson.Types
+import Data.Aeson.Types hiding (Parser)
 import Data.Char
+import Data.Foldable (for_)
 import Data.FileEmbed (embedFile)
 import Data.List (delete, intercalate, isPrefixOf, nub, partition)
 import Data.Maybe
@@ -18,11 +19,11 @@ import Data.Version
 import Control.Monad.Supply
 import Control.Monad.Supply.Class
 import Text.Printf
+import System.FilePath.Glob as G
 
 import System.Environment
 import System.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist, getCurrentDirectory, getModificationTime)
 import System.FilePath ((</>), joinPath, searchPathSeparator, splitDirectories, takeDirectory)
-import System.FilePath.Find
 import System.Process
 
 import Data.Text (Text)
@@ -37,12 +38,14 @@ import Development.GitRev
 import Language.PureScript.AST.Literals
 import Language.PureScript.CoreFn
 import Language.PureScript.CoreFn.FromJSON
+import Language.PureScript.Names (runModuleName)
 import CodeGen.CoreImp
 import Data.Text.Prettyprint.Doc.Util (putDocW)
 import Data.Text.Prettyprint.Doc (pretty)
 import Data.Text.Prettyprint.Doc.Render.Text (renderIO)
 import System.IO (openFile, IOMode(..), hClose)
 
+import Options.Applicative hiding (Success)
 
 import Text.Pretty.Simple (pPrint)
 
@@ -57,13 +60,56 @@ jsonToModule value =
     Success (_, r) -> r
     _ -> error "failed"
 
+data CliOptions = CliOptions
+  { inputFiles :: [FilePath]
+  , outputDir :: FilePath
+  }
+
+cli :: Parser CliOptions
+cli = CliOptions
+  <$> many 
+    ( strOption 
+      ( long "input"
+      <> short 'i'
+      <> metavar "FILENAME"
+      )
+    )
+  <*> strOption
+    ( long "outputDir"
+    <> short 'o'
+    <> metavar "FILENAME"
+    <> value "kotlin/"
+    )
+
+-- Adding program help text to the parser
+optsParserInfo :: ParserInfo CliOptions
+optsParserInfo = info (cli <**> helper)
+  (  fullDesc
+  <> progDesc "pskt"
+  <> header "PureScript Transpiler to Kotlin using CoreFn"
+  )
+
 main :: IO ()
 main = do
-  [path, outputPath] <- getArgs
+  putStrLn "pskt"
+  opts <- execParser optsParserInfo
+  let files = inputFiles opts
+  let outputPath = outputDir opts
+  putStrLn "input:"
+  foundInputFiles <- G.globDir (G.compile <$> files) "./"
+  putStrLn $ show foundInputFiles
+  putStrLn $ show outputPath
+  for_ (concat foundInputFiles) $ \file -> do
+    processFile outputPath $ file
+  pure ()
+
+processFile :: FilePath -> FilePath -> IO ()
+processFile outputDirPath path = do
   jsonText <- T.decodeUtf8 <$> B.readFile path
   let mod = jsonToModule $ parseJson jsonText
-  pPrint $ mod
-  outputFile <- openFile outputPath WriteMode
+  let modName = runModuleName $ moduleName mod
+  -- pPrint $ mod
+  outputFile <- openFile (outputDirPath </> T.unpack modName <> ".kt") WriteMode
   renderIO outputFile (moduleToText mod)
   hClose outputFile
-  putDocW 80 $ print mod
+  putDocW 80 $ print (Env mod) mod
