@@ -45,6 +45,9 @@ data KtExpr
   | VariableIntroduction Ident KtExpr
   | Destructuring [Ident] KtExpr
   | Binary BinOp KtExpr KtExpr
+  | Property KtExpr KtExpr
+  | ArrayAccess KtExpr KtExpr
+  | ObjectAccess KtExpr KtExpr
   | VarRef Ident
   | Cast KtExpr KtExpr
   | CoreImp (Doc())
@@ -54,8 +57,11 @@ instance PrintKt KtExpr where
   print env (VariableIntroduction ident expr) = "val" <+> (print env ident) <+> "=" <+> (print env expr)
   print env (Destructuring binders expr) = "val" <+> parens (commaSep $ print env <$> binders) <+> "=" <+> (print env expr)
   print env (Binary op left right) = print env left <+> print env op <+> print env right
+  print env (Property left right) = print env left <> "." <> print env right
+  print env (ArrayAccess left right) = print env (Cast left (CoreImp "List<Any>")) <>  brackets (print env right)
+  print env (ObjectAccess left right) = print env (Cast left (CoreImp "Map<String, Any>")) <>  brackets (print env right) <> "!!"
   print env (VarRef ident) = print env ident
-  print env (Cast a b) = print env a <+> "as" <+> print env b
+  print env (Cast a b) = parens $ print env a <+> "as" <+> print env b
   print env (CoreImp a) = a
 
 nest' = nest 4
@@ -97,7 +103,7 @@ instance PrintKt a => PrintKt (Qualified a) where
 instance PrintKt ModuleName where
    print env mod = pretty $ runModuleName mod
 
-instance PrintKt (ProperName ConstructorName) where
+instance PrintKt (ProperName a) where
    print _ = pretty . runProperName
 
 instance PrintKt Ident where

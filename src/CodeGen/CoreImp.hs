@@ -2,9 +2,11 @@ module CodeGen.CoreImp where
 --- Convert CoreFn to KtCore
 import Prelude hiding (print)
 import Data.Text (Text)
+import qualified Data.Text as T
 import Data.Maybe (catMaybes, fromMaybe, Maybe(..))
 import Data.List (nub)
 import Debug.Trace (trace)
+import Debug.Pretty.Simple (pTrace, pTraceShow, pTraceShowId)
 import Language.PureScript.CoreFn.Expr
 import Control.Monad.Supply.Class (MonadSupply, fresh)
 import Control.Monad (forM, replicateM, void)
@@ -55,23 +57,41 @@ instance PrintKt (Binder Ann) where
    print env (ConstructorBinder _ ty ctor binders) = parens $ commaSep $ print env <$> binders
 
 
-generateBinder :: forall m. (Monad m, MonadSupply m) => Env Ann -> Ident -> Binder Ann -> m [KtExpr]
-generateBinder env valName (ConstructorBinder a tyName ctorName binders) = do
-    generatedBinders <- forM binders $ \binder -> do
-      binderName <- freshIdent'
-      decls <- generateBinder env binderName binder
-      return (binderName, decls)
-    let decls = snd <$> generatedBinders
-    let binderNames = fst <$> generatedBinders
-    return $ [Destructuring binderNames (Cast (VarRef valName) (VarRef (Ident "Destructurable")))] ++ concat decls
-generateBinder env valName (VarBinder a ident) = return [VariableIntroduction ident (VarRef valName)]
--- f "ads" = 2
--- f __1 =
---    if __1 == asd then 2 
-generateBinder env valName (LiteralBinder _ lit) =
-  return [ If (Binary Equals (VarRef valName) (CoreImp $ pretty $ show lit)) (VarRef valName) Nothing]
+binderToAccessor :: Env Ann -> Binder Ann -> KtExpr -> [KtExpr]
+binderToAccessor env (VarBinder _ ident) parent = [VariableIntroduction ident parent]
+binderToAccessor env (NamedBinder _ ident binder) parent = [VariableIntroduction ident parent] ++ binderToAccessor env binder parent
+binderToAccessor env (ConstructorBinder _ tyName ctorName binder) parent = concat $ zipWith go binder [0..]
+   where
+      go binder index = binderToAccessor env binder propAccess
+         where propAccess = Property (Cast parent (CoreImp $ print env ctorName)) (VarRef $ Ident $ "value" <> T.pack (show index))
+binderToAccessor env (LiteralBinder _ (ArrayLiteral binders)) parent = concat $ zipWith go binders [(0 :: Int)..]
+   where
+      go binder index = binderToAccessor env binder arrayAccess
+         where arrayAccess = ArrayAccess parent (CoreImp $ pretty index)
+binderToAccessor env (LiteralBinder _ (ObjectLiteral binders)) parent = concat $ map go binders
+   where
+      go (key, binder) = binderToAccessor env binder objectAccess
+         where objectAccess = ObjectAccess parent (CoreImp $ pretty $ show key)
+binderToAccessor _ (LiteralBinder _ _) _ = []
 
-
+binderToCond :: Env Ann -> Binder Ann -> KtExpr -> [KtExpr]
+binderToCond env (LiteralBinder _ (StringLiteral psstring)) parentRef = [Binary Equals parentRef (CoreImp $ pretty $ show psstring) ]
+binderToCond env (LiteralBinder _ (NumericLiteral (Left int))) parentRef = [Binary Equals parentRef (CoreImp $ pretty int) ]
+binderToCond env (LiteralBinder _ (NumericLiteral (Right num))) parentRef = [Binary Equals parentRef (CoreImp $ pretty num) ]
+binderToCond env (LiteralBinder _ (BooleanLiteral bool)) parentRef = [Binary Equals (CoreImp $ str) parentRef]
+      where str = if bool then "true" else "false"
+binderToCond env (LiteralBinder _ (ArrayLiteral binders)) parentRef = 
+   [Binary Equals arraySize (CoreImp $ pretty $ length binders)] ++ concat (zipWith go binders [(0 :: Int)..])
+   where
+      arraySize = Property (Cast parentRef (CoreImp "List<*>")) (CoreImp "size")
+      go binder index = binderToCond env binder arrayAccess
+         where arrayAccess = ArrayAccess parentRef (CoreImp $ pretty index)
+binderToCond env (VarBinder _ _) parentRef = []
+binderToCond env (ConstructorBinder _ tyName ctorName binder) compareVal = 
+   [Binary IsType compareVal (CoreImp $ print env ctorName)] ++ concat (zipWith go binder [0..])
+   where
+      go binder index = binderToCond env binder propAccess
+         where propAccess = Property (Cast compareVal (CoreImp $ print env ctorName)) (VarRef $ Ident $ "value" <> T.pack (show index))
 
 instance PrintKt (Expr Ann) where
    print env (Literal _ lit) = print env lit
@@ -91,19 +111,19 @@ instance PrintKt (Expr Ann) where
    print env a@(Case (sp, _, _, _) expr cases) = print env $ WhenExpr (addElse $ concat $ caseForExpr <$> cases)
       where
          caseForExpr (CaseAlternative [binder] (Right thenValue)) =
-            [WhenCase (zipWith compareBinder [binder] expr) (vsep (print env <$> binderDoc) <> line <> print env thenValue)]
+            [WhenCase (zipWith compareBinder [binder] expr) (vsep (print env <$> binderToAccessor env binder (VarRef $ exprToIdent expr)) <> line <> print env thenValue)]
             where
                exprToIdent [(Var _ (Qualified _ ident))] = ident
-               binderDoc = evalSupply 0 $ generateBinder env (exprToIdent expr) binder
          caseForExpr (CaseAlternative binders (Left guardedValues)) = [WhenCase [] ""] 
          compareBinder :: Binder Ann -> Expr Ann -> Doc ()
-         compareBinder (NullBinder _) compareVal = "true"
-         compareBinder (ConstructorBinder _ ty ctor ctorArgs) compareVal =
-            (print env compareVal) <+> "is" <+> print env ctor
-         compareBinder (LiteralBinder _ lit) compareVal =
-            (print env compareVal) <+> "==" <+> (print env lit)
-         compareBinder (VarBinder a ident) compareVal = 
-            print env compareVal <+> "==" <+> print env ident
+         compareBinder binder compareVal = print env $ foldr (Binary And) (CoreImp "true") (binderToCond env binder (CoreImp $ print env compareVal))
+         -- compareBinder (NullBinder _) compareVal = "true"
+         -- compareBinder (ConstructorBinder _ ty ctor ctorArgs) compareVal =
+         --    (print env compareVal) <+> "is" <+> print env ctor
+         -- compareBinder (LiteralBinder _ lit) compareVal =
+         --    (print env compareVal) <+> "==" <+> (print env lit)
+         -- compareBinder (VarBinder a ident) compareVal = 
+         --    print env compareVal <+> "==" <+> print env ident
          showModule (Env mod) = print env $ moduleName mod
          addElse x = x ++ 
             [ WhenCase ["else"]
