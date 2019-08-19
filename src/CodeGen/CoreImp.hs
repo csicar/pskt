@@ -48,7 +48,7 @@ castMap expr = parens $ (parens expr) <+> "as Map<Any, Any>"
 
 
 printTypeDecl :: ProperName TypeName -> Doc a
-printTypeDecl name = "sealed class" <+> pretty (runProperName name) <+> ": Destructurable"
+printTypeDecl name = "sealed class" <+> pretty (runProperName name) <> "__Type" <+> ": Destructurable"
 
 instance PrintKt (Binder Ann) where
    print env (NullBinder _) = "_"
@@ -73,6 +73,8 @@ binderToAccessor env (LiteralBinder _ (ObjectLiteral binders)) parent = concat $
       go (key, binder) = binderToAccessor env binder objectAccess
          where objectAccess = ObjectAccess parent (CoreImp $ pretty $ show key)
 binderToAccessor _ (LiteralBinder _ _) _ = []
+binderToAccessor _ (NullBinder _) _ = []
+binderToAccessor env a c = pTraceShow a []
 
 binderToCond :: Env Ann -> Binder Ann -> KtExpr -> [KtExpr]
 binderToCond env (LiteralBinder _ (StringLiteral psstring)) parentRef = [Binary Equals parentRef (CoreImp $ pretty $ show psstring) ]
@@ -92,6 +94,8 @@ binderToCond env (ConstructorBinder _ tyName ctorName binder) compareVal =
    where
       go binder index = binderToCond env binder propAccess
          where propAccess = Property (Cast compareVal (CoreImp $ print env ctorName)) (VarRef $ Ident $ "value" <> T.pack (show index))
+binderToCond env (NullBinder _) parent = []
+binderToCond env a c = pTraceShow a []
 
 instance PrintKt (Expr Ann) where
    print env (Literal _ lit) = print env lit
@@ -104,26 +108,22 @@ instance PrintKt (Expr Ann) where
          ]
       , "}"
       ]
-   -- Constructor Call
    print env (App _ left@(Var (_, _, _, Just (IsConstructor _ _)) _) right) = (print env left) <> parens (print env right) 
    print env (App _ left right) = castFunction (print env left) <> parens (print env right)
-   print env (Accessor _ loc val) = castMap (print env val) <> brackets (print env loc)
+   print env (Accessor _ loc val) = castMap (print env val) <> brackets (print env loc) <> "!!"
    print env a@(Case (sp, _, _, _) expr cases) = print env $ WhenExpr (addElse $ concat $ caseForExpr <$> cases)
       where
-         caseForExpr (CaseAlternative [binder] (Right thenValue)) =
-            [WhenCase (zipWith compareBinder [binder] expr) (vsep (print env <$> binderToAccessor env binder (VarRef $ exprToIdent expr)) <> line <> print env thenValue)]
-            where
-               exprToIdent [(Var _ (Qualified _ ident))] = ident
-         caseForExpr (CaseAlternative binders (Left guardedValues)) = [WhenCase [] ""] 
+         caseForExpr (CaseAlternative binders (Right thenValue)) =
+            [ WhenCase 
+               (zipWith compareBinder binders expr)
+               (vsep 
+                  (print env <$> concat (zipWith (binderToAccessor env) binders (CoreImp . print env <$> expr)))
+                  <> line <> print env thenValue
+               )
+            ]
+         caseForExpr (CaseAlternative binders (Left guardedValues)) = [WhenCase [] ""] --todo
          compareBinder :: Binder Ann -> Expr Ann -> Doc ()
          compareBinder binder compareVal = print env $ foldr (Binary And) (CoreImp "true") (binderToCond env binder (CoreImp $ print env compareVal))
-         -- compareBinder (NullBinder _) compareVal = "true"
-         -- compareBinder (ConstructorBinder _ ty ctor ctorArgs) compareVal =
-         --    (print env compareVal) <+> "is" <+> print env ctor
-         -- compareBinder (LiteralBinder _ lit) compareVal =
-         --    (print env compareVal) <+> "==" <+> (print env lit)
-         -- compareBinder (VarBinder a ident) compareVal = 
-         --    print env compareVal <+> "==" <+> print env ident
          showModule (Env mod) = print env $ moduleName mod
          addElse x = x ++ 
             [ WhenCase ["else"]
@@ -141,7 +141,7 @@ justInTopLevel a = Declaration [] [a]
 
 printDecl env _ (Constructor _ tyName ctorName args) = justInTopLevel $ "data class" <+> printedCtorName
    <> parens (commaSep $ addParameterIfEmpty $ printConstructorArg <$> args)
-   <+> ":" <+> (pretty $ runProperName tyName) <> "() {" <+> curriedConstructor <+> "}"
+   <+> ":" <+> (pretty $ runProperName tyName) <> "__Type() {" <+> curriedConstructor <+> "}"
    where
       printedCtorName = (pretty (runProperName ctorName))
       -- required because "data class Ctor()" is not valid in newer versions of kotlin
@@ -158,17 +158,26 @@ printDecl env _ (Constructor _ tyName ctorName args) = justInTopLevel $ "data cl
 printDecl env ident a = justInModule $ "@JvmField" <> line <> "val"<+> print env ident <+> "=" <+> nest' (print env a <> line)
 
 
+printTopLevelBind env bind@(NonRec _ ident val) = [printDecl env ident val]
+printTopLevelBind env binds@(Rec vals) = (go <$> vals)
+      where go ((_, ident), val) = printDecl env ident val
+
 
 instance PrintKt (Bind Ann) where
    print env (NonRec _ ident val) = "val" <+> print env ident <+> "=" <+> nest' (print env val <> line)
-
-printTopLevelBind env bind@(NonRec _ ident val) = (printDecl env ident val)
+   print env (Rec defs) = vsep $
+      (print env . go <$> defs)
+      where go ((_, ident), expr) = VariableIntroduction ident (CoreImp $ print env expr)
 
 collectTypeDecls :: [Bind a] -> [ProperName TypeName]
-collectTypeDecls list = catMaybes $ nub $ map go list
+collectTypeDecls list = nub $ concat $ map go list
    where
-      go (NonRec _ _ (Constructor _ tyName _ _)) = Just tyName
-      go _ = Nothing
+      go (NonRec _ _ expr) = extract expr
+      go (Rec defs) = concat $ extract . snd <$> defs
+      go _ = []
+
+      extract (Constructor _ tyName _ _) = [tyName]
+      extract _ = []
 
 printForeignImport :: Env Ann -> ModuleName -> Ident -> Doc ()
 printForeignImport env modName ident = "import Foreign." <> (print env modName) <> "." <> (print env ident) <+> "as" <+> (print env ident)
@@ -192,7 +201,7 @@ instance PrintKt (Module Ann) where
          header = "package" <+> (print env $ moduleName mod) <> ";"
          foreignImports = vsep $ printForeignImport env (moduleName mod) <$> (moduleForeign mod)
          typeDecls = collectTypeDecls (moduleDecls mod)
-         declarations = printTopLevelBind env <$> (moduleDecls mod)
+         declarations = concat $ printTopLevelBind env <$> (moduleDecls mod)
          body = vsep $ concat $ runInModule <$> declarations
          topLevelDecls = vsep $ concat $ runInTopLevel <$> declarations
          object = vsep 
@@ -206,7 +215,7 @@ instance PrintKt (Module Ann) where
 
 printInterfaceDestructurable =
    "interface Destructurable " <> braceNested
-      ( vsep ["operator fun component"<> (pretty (n :: Integer)) <> "() : Any {throw Exception(\"unimplemented\")}" | n <- [0..10]]
+      ( vsep ["operator fun component"<> (pretty (n :: Integer)) <> "() : Any {error(\"unimplemented\")}" | n <- [0..10]]
       )
 moduleToText :: Module Ann -> SimpleDocStream ()
 moduleToText mod = layoutPretty defaultLayoutOptions $ print (Env mod) mod

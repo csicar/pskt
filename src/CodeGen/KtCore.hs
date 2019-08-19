@@ -50,6 +50,7 @@ data KtExpr
   | ObjectAccess KtExpr KtExpr
   | VarRef Ident
   | Cast KtExpr KtExpr
+  | Fun (Maybe Ident) Ident KtExpr
   | CoreImp (Doc())
 
 instance PrintKt KtExpr where
@@ -62,6 +63,7 @@ instance PrintKt KtExpr where
   print env (ObjectAccess left right) = print env (Cast left (CoreImp "Map<String, Any>")) <>  brackets (print env right) <> "!!"
   print env (VarRef ident) = print env ident
   print env (Cast a b) = parens $ print env a <+> "as" <+> print env b
+  print env (Fun name arg body) = "fun" <+> (fromMaybe "" $ (print env) <$> name) <> parens (print env arg <+> ": Any") <+> "=" <> softline'
   print env (CoreImp a) = a
 
 nest' = nest 4
@@ -87,7 +89,7 @@ instance PrintKt (WhenCase (Doc ())) where
 
 instance PrintKt (WhenExpr (Doc ())) where
   print env (WhenExpr cases) = vsep 
-    [ nest 2 $ vsep 
+    [ nest' $ vsep 
       [ "when {" 
       , vsep (print env <$> cases)
        ]
@@ -98,7 +100,7 @@ instance PrintKt (WhenExpr (Doc ())) where
 instance PrintKt a => PrintKt (Qualified a) where
    print env (Qualified Nothing ident) = print env ident
    print env@(Env envMod) (Qualified (Just mod) ident) | moduleName envMod == mod = print env ident
-   print env (Qualified (Just mod) ident) = print env mod <> "." <> print env ident
+   print env (Qualified (Just mod) ident) = print env mod <> ".Module." <> print env ident
 
 instance PrintKt ModuleName where
    print env mod = pretty $ runModuleName mod
@@ -107,7 +109,8 @@ instance PrintKt (ProperName a) where
    print _ = pretty . runProperName
 
 instance PrintKt Ident where
+  print env (Ident "$__unused") = "__unused"
   print env (Ident i) = pretty i
   print env (GenIdent Nothing n) = "__" <> pretty (show n)
   print env (GenIdent (Just name) n) = "__" <> pretty name <> pretty (show n)
-  print env UnusedIdent = "__"
+  print env UnusedIdent = "__unused"
