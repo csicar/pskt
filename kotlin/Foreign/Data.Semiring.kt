@@ -1,4 +1,4 @@
-package Data.Semiring;
+package Foreign.Data.Semiring;
 
 val intAdd = { x: Any -> { y: Any -> 
   x as Int; y as Int

@@ -1,4 +1,4 @@
-package Data.Show;
+package Foreign.Data.Show;
 
 val showIntImpl = { n : Any -> "$n" }
 

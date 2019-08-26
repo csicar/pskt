@@ -1,3 +1,3 @@
-package Data.Unit;
+package Foreign.Data.Unit;
 
 val unit = Unit

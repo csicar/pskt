@@ -12,7 +12,18 @@ test:
 
 test-generatekt: build
 	stack exec -- pskt \
-		-i "test/output/*/corefn.json"\
+		-i "test/output/Data.Unit/corefn.json"\
+		-i "test/output/Data.Show/corefn.json"\
+		-i "test/output/Data.Symbol/corefn.json"\
+		-i "test/output/Type.Data.RowList/corefn.json"\
+		-i "test/output/Type.Data.Row/corefn.json"\
+		-i "test/output/Record.Unsafe/corefn.json"\
+		-i "test/output/Data.Semigroup/corefn.json"\
+		-i "test/output/Data.Semiring/corefn.json"\
+		-i "test/output/Data.Function/corefn.json"\
+		-i "test/output/Control.Semigroupoid/corefn.json"\
+		-i "test/output/Data.Void/corefn.json"\
+		-i "test/output/Main/corefn.json"\
 		-o ./kotlin/
 
 .PHONY: test-codegen

@@ -21,14 +21,13 @@ import Data.Text.Prettyprint.Doc
 import Text.Pretty.Simple (pShow)
 import Language.PureScript.AST.SourcePos (displayStartEndPos)
 
-data WhenExpr a
-  = WhenExpr [WhenCase a]
+newtype WhenExpr a = WhenExpr [WhenCase a]
 
 data WhenCase a
   -- Conditions, return value
   = WhenCase [a] a
 
-data Env a = Env {mod :: Module a}
+data Env a = Env {mod :: Module a, recursiveIdent :: [ Ident ]}
 
 data BinOp
   = Equals
@@ -43,6 +42,7 @@ instance PrintKt BinOp where
 data KtExpr
   = If KtExpr KtExpr (Maybe KtExpr)
   | VariableIntroduction Ident KtExpr
+  | RecVarIntro Ident KtExpr
   | Destructuring [Ident] KtExpr
   | Binary BinOp KtExpr KtExpr
   | Property KtExpr KtExpr
@@ -55,7 +55,8 @@ data KtExpr
 
 instance PrintKt KtExpr where
   print env (If a b c) = "if" <> parens (print env a) <> braceNested (print env b) <+> fromMaybe "" (("else" <+>) . braceNested . print env <$> c)
-  print env (VariableIntroduction ident expr) = "val" <+> (print env ident) <+> "=" <+> (print env expr)
+  print env (VariableIntroduction ident expr) = "val" <+> print env ident <+> "=" <+> print env expr
+  print env (RecVarIntro ident expr) = "lateinit var" <+> print env ident <> ": Any;" <+> print env ident <+> "=" <+> print env expr
   print env (Destructuring binders expr) = "val" <+> parens (commaSep $ print env <$> binders) <+> "=" <+> (print env expr)
   print env (Binary op left right) = print env left <+> print env op <+> print env right
   print env (Property left right) = print env left <> "." <> print env right
@@ -69,7 +70,7 @@ instance PrintKt KtExpr where
 nest' = nest 4
 
 joinWith :: Doc a -> [Doc a] -> Doc a
-joinWith c d = concatWith f d
+joinWith c = concatWith f
    where
    f a b = a <> c <> softline <> b
 
@@ -85,7 +86,11 @@ class PrintKt a where
   print :: Env Ann -> a -> Doc ()
 
 instance PrintKt (WhenCase (Doc ())) where
-  print env (WhenCase guards expr) = joinWith " &&" guards <+> "->" <+> braceNested expr
+  print env (WhenCase guards expr) = guardExpr <+> "->" <+> braceNested expr
+    where 
+      guardExpr = case guards of
+        [] -> "true"
+        _ -> joinWith " &&" guards
 
 instance PrintKt (WhenExpr (Doc ())) where
   print env (WhenExpr cases) = vsep 
@@ -99,8 +104,11 @@ instance PrintKt (WhenExpr (Doc ())) where
 
 instance PrintKt a => PrintKt (Qualified a) where
    print env (Qualified Nothing ident) = print env ident
-   print env@(Env envMod) (Qualified (Just mod) ident) | moduleName envMod == mod = print env ident
-   print env (Qualified (Just mod) ident) = print env mod <> ".Module." <> print env ident
+   print env@(Env envMod _) (Qualified (Just mod) ident) | moduleName envMod == mod = print env ident
+   print env (Qualified (Just mod) ident) = case show sub of
+      "" -> "Unit"
+      _ -> print env mod <> ".Module." <> print env ident
+    where sub = print env ident
 
 instance PrintKt ModuleName where
    print env mod = pretty $ runModuleName mod
@@ -110,6 +118,8 @@ instance PrintKt (ProperName a) where
 
 instance PrintKt Ident where
   print env (Ident "$__unused") = "__unused"
+  print env (Ident "undefined") = ""
+  print (Env _ recIdents) ident@(Ident i) | ident `elem` recIdents = pretty i <> "__rec"
   print env (Ident i) = pretty i
   print env (GenIdent Nothing n) = "__" <> pretty (show n)
   print env (GenIdent (Just name) n) = "__" <> pretty name <> pretty (show n)

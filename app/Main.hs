@@ -118,4 +118,4 @@ processFile opts outputDirPath path = do
   outputFile <- openFile (outputDirPath </> T.unpack modName <> ".kt") WriteMode
   renderIO outputFile (moduleToText mod)
   hClose outputFile
-  putDocW 80 $ print (Env mod) mod
+  putDocW 80 $ print (Env mod []) mod
