@@ -114,8 +114,10 @@ processFile opts outputDirPath path = do
   jsonText <- T.decodeUtf8 <$> B.readFile path
   let mod = jsonToModule $ parseJson jsonText
   let modName = runModuleName $ moduleName mod
-  if (printCoreFn opts) then do pPrint mod else do pure ()
+  if printCoreFn opts then pPrint mod else pure ()
+  let moduleKt = moduleToKt' mod
+  pPrint moduleKt
   outputFile <- openFile (outputDirPath </> T.unpack modName <> ".kt") WriteMode
   renderIO outputFile (moduleToText mod)
   hClose outputFile
-  putDocW 80 $ print (Env mod []) mod
+  -- putDocW 80 $ print (Env mod []) mod

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 01ccc83e2a787f9411320da483da4bc4ac0e419fb6feb27fee37685d8c868368
+-- hash: 7c9586a45ef613018d69198d1889c9f63062a65fd23a30dce07d1bae8f6067fa
 
 name:           pskt
 version:        0.1.0.0
@@ -28,6 +28,7 @@ source-repository head
 
 library
   exposed-modules:
+      CodeGen.Constants
       CodeGen.CoreImp
       CodeGen.KtCore
   other-modules:
