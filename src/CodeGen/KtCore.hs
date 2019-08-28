@@ -1,6 +1,7 @@
 module CodeGen.KtCore where
 
 import Prelude hiding (print)
+import Protolude (zipWithM)
 import Data.Text (Text)
 import Data.Maybe (catMaybes, fromMaybe, Maybe(..))
 import Data.List (nub)
@@ -22,11 +23,9 @@ import Text.Pretty.Simple (pShow)
 import Language.PureScript.AST.SourcePos (displayStartEndPos)
 import CodeGen.Constants
 
-newtype WhenExpr a = WhenExpr [WhenCase a]
-
 data WhenCase a
   -- Conditions, return value
-  = WhenCase [a] a
+  = WhenCase [a] a deriving (Show)
 
 data BinOp
   = Equals
@@ -56,24 +55,40 @@ identFromTypeName (ProperName txt) = return $ MkKtIdent $ ("_Type"<>) $ unreserv
 ktIdentFromIdent :: MonadSupply m => Ident -> m KtIdent
 ktIdentFromIdent ident = return $ MkKtIdent $ unreserve $ runIdent ident
 
-qualifiedIdentToKt :: MonadSupply m => Qualified Ident -> m KtExpr
-qualifiedIdentToKt (Qualified mModName ident) = do
-    ktIdent <- ktIdentFromIdent ident
-    return $ VarRef (Qualified (prependPsNamespace <$> mModName) ktIdent)
-    where
+varRefUnqual = VarRef . Qualified Nothing
+
+qualifiedToKt :: MonadSupply m => (a -> m b) -> Qualified a -> m (Qualified b)
+qualifiedToKt f (Qualified mModName a) = do
+  res <- f a
+  return $ Qualified (prependPsNamespace <$> mModName) res
+  where
       prependPsNamespace (ModuleName ls) = ModuleName $ psNamespace : ls
 
+qualifiedIdentToKt :: MonadSupply m => Qualified Ident -> m KtExpr
+qualifiedIdentToKt qualIdent = VarRef <$> qualifiedToKt ktIdentFromIdent qualIdent
+    
+
 forMLiteral :: Monad m => Literal a -> (a -> m b) -> m (Literal b)
-forMLiteral (ArrayLiteral ls) f = do
-    ls' <- mapM f ls
+forMLiteral lit f = forMLitKey lit (const f) (const f)
+
+forMLitKey :: Monad m => Literal a -> (Integer -> a -> m b) -> (PSString -> a -> m b) -> m (Literal b)
+forMLitKey (ArrayLiteral ls) f _ = do
+    ls' <- zipWithM f [0 ..] ls
     return $ ArrayLiteral ls'
-forMLiteral (ObjectLiteral ls) f = do
-    ls' <- mapM (\(key, val) -> (key,) <$> f val) ls
+forMLitKey (ObjectLiteral ls) _ g = do
+    ls' <- mapM (\entry -> (fst entry,) <$> uncurry g entry) ls
     return $ ObjectLiteral ls' 
-forMLiteral (NumericLiteral a) _ = return $ NumericLiteral a
-forMLiteral (StringLiteral a) _ = return $ StringLiteral a
-forMLiteral (CharLiteral a) _ = return $ CharLiteral a
-forMLiteral (BooleanLiteral a) _ = return $ BooleanLiteral a
+forMLitKey (NumericLiteral a) _ _ = return $ NumericLiteral a
+forMLitKey (StringLiteral a) _ _ = return $ StringLiteral a
+forMLitKey (CharLiteral a) _ _ = return $ CharLiteral a
+forMLitKey (BooleanLiteral a) _ _ = return $ BooleanLiteral a
+
+instance Foldable Literal where
+  foldr f e (ArrayLiteral ls) = foldr f e ls
+  foldr f e (ObjectLiteral ls) = foldr (f . snd) e ls
+  foldr _ e _ = e
+
+-- mapLiteralParts :: ([a] -> b) -> ([(PSString, a)] -> [(PSString, b)]) -> ((Literal a) -> (Literal b)) -> Literal b
 
 data KtModifier
   = Sealed 
@@ -87,6 +102,7 @@ data KtExpr
   | ClassDecl [KtModifier] KtIdent [KtIdent] [KtExpr] KtExpr
   -- ^ class modifier; name; arguments; extends; body
   | If KtExpr KtExpr (Maybe KtExpr)
+  | WhenExpr [WhenCase KtExpr]
   | VariableIntroduction KtIdent KtExpr
   | Binary BinOp KtExpr KtExpr
   | Property KtExpr KtExpr
@@ -100,6 +116,14 @@ data KtExpr
   | Const (Literal KtExpr)
   deriving (Show)
 
+getLength :: KtExpr -> KtExpr
+getLength a = Property a $ varRefUnqual $ MkKtIdent "size"
+
+ktInt :: Integer -> KtExpr
+ktInt = Const . NumericLiteral . Left
+
+ktString :: PSString -> KtExpr
+ktString = Const . StringLiteral
 
 nest' = nest 4
 

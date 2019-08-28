@@ -1,6 +1,7 @@
 module CodeGen.CoreImp where
 --- Convert CoreFn to KtCore
-import Protolude hiding (Const, moduleName)
+import Prelude (undefined)
+import Protolude hiding (Const, moduleName, undefined)
 import Protolude (unsnoc)
 import Data.Text (Text)
 import qualified Data.Text as T
@@ -116,9 +117,61 @@ moduleToKt mod = Stmt <$> sequence
          aKt <- exprToKt a
          bKt <- exprToKt b
          return $ Call aKt [bKt]
-
+      exprToKt (Case _ compareVals caseAlternatives) = WhenExpr <$> mapM (caseToKt compareVals) caseAlternatives
+      exprToKt a = pTraceShow a undefined
       
+      caseToKt :: MonadSupply m => [Expr Ann] -> CaseAlternative Ann -> m (WhenCase KtExpr)
+      caseToKt compareVals (CaseAlternative binders (Right result)) = do
+         ktCompareVals <- mapM exprToKt compareVals
+         (guards, assignments) <- transposeTuple <$> zipWithM go ktCompareVals binders
+         ktBody <- exprToKt result
+         pure $ WhenCase (concat guards) (Stmt $ concat assignments ++ [ktBody])
+         where
+            go :: MonadSupply m => KtExpr -> Binder Ann -> m ([KtExpr], [KtExpr])
+            go compareVal (VarBinder _ ident) = do
+               ktIdent <- ktIdentFromIdent ident
+               pure 
+                  ( []
+                  , [VariableIntroduction ktIdent compareVal]
+                  )
+            go compareVal (LiteralBinder _ literal) = do
+               literalValue <- forMLitKey literal
+                  (go . ArrayAccess compareVal . ktInt)
+                  (go . ObjectAccess compareVal . ktString)
+               pure 
+                  ( specificGuard literal : fold (fst <$> literalValue)
+                  , fold (snd <$> literalValue)
+                  )
+               where
+                  specificGuard (ArrayLiteral a) = 
+                     Binary Equals (getLength compareVal) (ktInt $ fromIntegral $ length a)
+                  specificGuard (ObjectLiteral a) = 
+                     Binary Equals (getLength compareVal) (ktInt $ fromIntegral $ length a)
+                  specificGuard (NumericLiteral a) = Binary Equals compareVal $ Const $ NumericLiteral a
+                  specificGuard (StringLiteral a) = Binary Equals compareVal $ Const $ StringLiteral a
+                  specificGuard (CharLiteral a) = Binary Equals compareVal $ Const $ CharLiteral a
+                  specificGuard (BooleanLiteral a) = Binary Equals compareVal $ Const $ BooleanLiteral a
+            go _ NullBinder{} = pure ([], [])
+            go compareVal (ConstructorBinder (_, _, _, Just (IsConstructor _ ctorParams)) tyName ctorName subBinders) = do
+               ktTypeIdent <- qualifiedToKt identFromTypeName tyName
+               ktCtorName <- qualifiedToKt identFromCtorName ctorName
+               ktCtorParams <- mapM ktIdentFromIdent ctorParams
+               subBindersExprs <- zipWithM (\ident binder -> go (Property compareVal (varRefUnqual ident)) binder) ktCtorParams subBinders
+               pure
+                  ( Binary IsType compareVal (Property (VarRef ktTypeIdent) (VarRef ktCtorName)) : concat (fst <$> subBindersExprs)
+                  , concat $ snd <$> subBindersExprs
+                  )
+            go compareVal (NamedBinder _ ident subBinder) = do
+               ktIdent <- ktIdentFromIdent ident
+               (guards, assignments) <- go compareVal subBinder
+               pure 
+                  ( guards
+                  , VariableIntroduction ktIdent compareVal : assignments
+                  )
+            go compareVal binder = pure $ pTraceShow (compareVal, binder) undefined
 
+transposeTuple :: [(a, b)] -> ([a], [b])
+transposeTuple ls = (fst <$> ls, snd <$> ls)
 
 splitLast :: a -> [a] -> ([a], a)
 splitLast pre [] = ([pre], pre)
