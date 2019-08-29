@@ -85,7 +85,10 @@ printExprAlg (VarRef qualIdent) = printQualified printKtIdent qualIdent
 printExprAlg (Call a args) = a <> parens (commaSep args)
 printExprAlg (VariableIntroduction ident a) = "val" <+> printKtIdent ident <+> "=" <+> a
 printExprAlg (Lambda arg body) = braceNested $ printKtIdent arg <+> ": Any ->" <+> body
+printExprAlg (Fun mName arg body) = 
+   "fun" <+> maybe "" printKtIdent mName <> parens (printKtIdent arg <+> ": Any") <> ": Any =" <+> body
 printExprAlg (Property a b) = a <> "." <> b
+printExprAlg (FunRef qualIdent) = parens $ "::" <> printQualified printKtIdent qualIdent
 printExprAlg (Const lit) = printLiteral lit
 printExprAlg (WhenExpr cases) = "when" <+> braceNested (vsep $ printWhenCases <$> cases)
 printExprAlg (Binary op a b) = a <+> printOp op <+> b

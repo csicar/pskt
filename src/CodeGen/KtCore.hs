@@ -42,7 +42,8 @@ data BinOp
   | And
   deriving (Show)
 
-newtype KtIdent = MkKtIdent Text deriving (Show)
+newtype KtIdent = MkKtIdent Text deriving (Show, Eq)
+runKtIdent (MkKtIdent a) = a
 
 forMLiteral :: Monad m => Literal a -> (a -> m b) -> m (Literal b)
 forMLiteral lit f = forMLitKey lit (const f) (const f)
@@ -89,6 +90,7 @@ data KtExprF r
   | VarRef (Qualified KtIdent)
   | Cast r r
   | Fun (Maybe KtIdent) KtIdent r
+  | FunRef (Qualified KtIdent)
   | Lambda KtIdent r
   | Call r [r]
   | Const (Literal r)
@@ -97,6 +99,13 @@ data KtExprF r
 $(deriveShow1 ''KtExprF)
 
 type KtExpr = Fix KtExprF
+
+renameIdent :: (Qualified KtIdent -> Qualified KtIdent) -> KtExpr -> KtExpr
+renameIdent f = cata (Fix . alg) where
+  alg :: KtExprF KtExpr -> KtExprF KtExpr
+  alg (VarRef qualIdent) = VarRef $ f qualIdent
+  alg (FunRef qualIdent) = FunRef $ f qualIdent
+  alg a = a
 
 -- everywhere :: MonadSupply m => (KtExpr -> m KtExpr) -> KtExpr -> m KtExpr
 -- everywhere f (Stmt as) = Stmt <$> mapM f as
@@ -187,3 +196,7 @@ ktWhenExpr = Fix . WhenExpr
 ktPackage = Fix . Package
 
 ktImport a b = Fix $ Import a b
+
+ktFun a b c = Fix $ Fun a b c
+
+ktFunRef = Fix . FunRef

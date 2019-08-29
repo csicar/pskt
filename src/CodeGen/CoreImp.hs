@@ -31,6 +31,7 @@ import CodeGen.Constants
 import CodeGen.KtCore
 import Data.Maybe  (fromJust)
 import CodeGen.Transformations
+import Data.Functor.Foldable (Fix(..), cata)
 
 moduleToKt' mod = evalSupply 0 (moduleToKt mod)
 
@@ -65,7 +66,7 @@ moduleToKt mod = sequence
          decls <- mapM classDeclsToKt classDecls
          body <- mapM bindToKt normalDecls 
          objectName <- identFromNameSpace objectName
-         return $ ktObjectDecl objectName $ ktStmt $ concat decls ++ body
+         return $ ktObjectDecl objectName $ ktStmt $ concat decls ++ concat body
          where
             objectName = snd $ splitModule (moduleName mod)
 
@@ -99,12 +100,36 @@ moduleToKt mod = sequence
             groupToDecl :: Bind Ann -> DataCtorDecl
             groupToDecl (NonRec _ _ (Constructor _ _ ctorName idents)) = DataCtorDecl ctorName idents
 
-      bindToKt :: MonadSupply m => Bind Ann -> m KtExpr
+      bindToKt :: MonadSupply m => Bind Ann -> m [KtExpr]
       --TODO: split binder into (Constructor ...) and others
       bindToKt (NonRec _ ident val) = do
             ktVal <- exprToKt val
             ktIdent <- ktIdentFromIdent ident
-            return $ ktVariable ktIdent ktVal
+            return [ ktVariable ktIdent ktVal ]
+      bindToKt (Rec bindings) = do
+         converted <- mapM go bindings
+         pure $ replaceRecNames (snd <$> converted) <$> concat (fst <$> converted)
+         where
+            genRecTxt name = "_rec_"<> name
+            genRecName (MkKtIdent name) = MkKtIdent $ "_" <> genRecTxt name
+            replaceRecNames :: [(KtIdent, KtIdent)] -> KtExpr -> KtExpr
+            replaceRecNames replacements expr = foldr replaceRecName expr replacements
+            replaceRecName :: (KtIdent, KtIdent) -> KtExpr -> KtExpr
+            replaceRecName (original, new) = cata (Fix . alg) where
+               alg (VarRef (Qualified modName' name)) 
+                  | (name == original) && maybe True (== (ModuleName $ (\(a, b) -> a++[b]) $ splitModule $ moduleName mod)) modName' = 
+                     FunRef (Qualified Nothing new)
+               alg a = a
+            go :: MonadSupply m => ((a, Ident), Expr Ann) -> m ([KtExpr], (KtIdent, KtIdent))
+            go ((_, ident), val@(Abs _ arg body)) = do
+               ktVal <- exprToKt val
+               ktIdent <- ktIdentFromIdent ident
+               ktArg <- ktIdentFromIdent arg
+               ktBody <- exprToKt body
+               let recFuncName = genRecName ktIdent
+               let normalVar = ktVariable ktIdent (ktFunRef (Qualified Nothing recFuncName))
+               
+               return ([ ktFun (Just recFuncName) ktArg ktBody, normalVar ], (ktIdent, recFuncName))
 
       exprToKt :: MonadSupply m => Expr Ann -> m KtExpr
       exprToKt (Var _ qualIdent) = qualifiedIdentToKt qualIdent

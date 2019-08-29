@@ -20,6 +20,7 @@ import Control.Monad.Supply
 import Control.Monad.Supply.Class
 import Text.Printf
 import System.FilePath.Glob as G
+import qualified Data.Text.Lazy.IO as TIO
 
 import System.Environment
 import System.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist, getCurrentDirectory, getModificationTime)
@@ -35,12 +36,14 @@ import qualified Data.ByteString as B
 
 import Development.GitRev
 
+import Data.Text.Prettyprint.Doc.Render.Text (renderLazy)
 import Language.PureScript.AST.Literals
 import Language.PureScript.CoreFn
 import Language.PureScript.CoreFn.FromJSON
 import Language.PureScript.Names (runModuleName)
 import CodeGen.CoreImp
 import CodeGen.KtCore
+import CodeGen.Printer
 import Data.Text.Prettyprint.Doc.Util (putDocW)
 import Data.Text.Prettyprint.Doc (pretty)
 import Data.Text.Prettyprint.Doc.Render.Text (renderIO)
@@ -118,6 +121,7 @@ processFile opts outputDirPath path = do
   let moduleKt = moduleToKt' mod
   pPrint moduleKt
   outputFile <- openFile (outputDirPath </> T.unpack modName <> ".kt") WriteMode
-  renderIO outputFile (moduleToText mod)
+  let moduleDoc = moduleToText mod
+  renderIO outputFile moduleDoc
   hClose outputFile
-  -- putDocW 80 $ print (Env mod []) mod
+  TIO.putStrLn $ renderLazy moduleDoc
