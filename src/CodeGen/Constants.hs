@@ -17,6 +17,7 @@ import Language.PureScript.PSString (prettyPrintStringJS, PSString)
 psNamespace :: ProperName Namespace
 psNamespace = ProperName "PS"
 
+
 isReserved :: Text -> Bool
 isReserved = (`elem` allReserved)
 

@@ -68,19 +68,19 @@ printLiteral (ObjectLiteral as) = printExprAlg $ Call "mapOf" $ (\(key, val) -> 
 printExpr :: KtExpr -> Doc ()
 printExpr = cata printExprAlg
 
+extendsDoc = \case  
+   [] -> ""
+   extends -> ":" <+> hsep extends
+
 printExprAlg :: KtExprF (Doc ()) -> Doc ()
 printExprAlg (Package ns) = "package" <+> joinWith "." (pretty . runProperName <$> ns)
 printExprAlg (Import ns val) = "import" <+> joinWith "." (pretty . runProperName <$> ns) <> "." <> printKtIdent val
+printExprAlg (Stmt []) = "{}"
 printExprAlg (Stmt stmts) = braceNested $ vsep stmts
-printExprAlg (ObjectDecl ident body) = "object" <+> printKtIdent ident <+> body
+printExprAlg (ObjectDecl ident extends body) = "object" <+> printKtIdent ident <+> extendsDoc extends <+> body
 printExprAlg (ClassDecl mods name args extends body) =
       hsep (printKtModifier <$> mods) <+> "class" <+> printKtIdent name 
-         <+> parens (commaSep $ ("val"<+>) . (<+> ": Any") . printKtIdent <$> args) <+> extendsDoc <+> body
-      where 
-         extendsDoc = case extends of 
-            [] -> ""
-            _ -> ":" <+> hsep extends
-
+         <+> parens (commaSep $ ("val"<+>) . (<+> ": Any") . printKtIdent <$> args) <+> extendsDoc extends <+> body
 printExprAlg (VarRef qualIdent) = printQualified printKtIdent qualIdent
 printExprAlg (Call a args) = a <> parens (commaSep args)
 printExprAlg (VariableIntroduction ident a) = "val" <+> printKtIdent ident <+> "=" <+> a
@@ -92,6 +92,8 @@ printExprAlg (FunRef qualIdent) = parens $ "::" <> printQualified printKtIdent q
 printExprAlg (Const lit) = printLiteral lit
 printExprAlg (WhenExpr cases) = "when" <+> braceNested (vsep $ printWhenCases <$> cases)
 printExprAlg (Binary op a b) = a <+> printOp op <+> b
+printExprAlg (ObjectAccess obj key) = obj <> brackets key
+printExprAlg (Cast a b) = parens $ a <+> "as" <+> b
 printExprAlg a = pretty $ show a
 
 printOp Equals = "=="

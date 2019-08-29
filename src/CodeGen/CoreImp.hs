@@ -1,6 +1,6 @@
 module CodeGen.CoreImp where
 --- Convert CoreFn to KtCore
-import Prelude (undefined)
+import Prelude (undefined, error)
 import Protolude hiding (Const, const, moduleName, undefined)
 import Protolude (unsnoc)
 import Data.Text (Text)
@@ -66,7 +66,7 @@ moduleToKt mod = sequence
          decls <- mapM classDeclsToKt classDecls
          body <- mapM bindToKt normalDecls 
          objectName <- identFromNameSpace objectName
-         return $ ktObjectDecl objectName $ ktStmt $ concat decls ++ concat body
+         return $ ktObjectDecl objectName [] $ ktStmt $ concat decls ++ concat body
          where
             objectName = snd $ splitModule (moduleName mod)
 
@@ -82,10 +82,16 @@ moduleToKt mod = sequence
          let parentRef = ktCall parentName []
          ktParam <- mapM ktIdentFromIdent param 
          ktName <- identFromCtorName ctorName
-         return 
-            ( ktClassDecl [Data] ktName ktParam [parentRef] (ktStmt [])
-            , ktVariable ktName (lambdaFor ktName [] ktParam)
-            )
+         return $
+            case param of
+               [] ->
+                  ( ktObjectDecl ktName [parentRef] (ktStmt [])
+                  , ktVariable ktName (ktProperty parentName (varRefUnqual ktName))
+                  )
+               _ -> 
+                  ( ktClassDecl [Data] ktName ktParam [parentRef] (ktStmt [])
+                  , ktVariable ktName (lambdaFor ktName [] ktParam)
+                  )
          where 
             lambdaFor ktName ktParam [] = ktCall (ktProperty parentName (varRefUnqual ktName)) (varRefUnqual <$> ktParam)
             lambdaFor ktName ktParam (l:ls) = ktLambda l (lambdaFor ktName (ktParam ++ [l]) ls)
@@ -143,6 +149,13 @@ moduleToKt mod = sequence
          bKt <- exprToKt b
          return $ ktCall (ktProperty aKt (varRefUnqual $ MkKtIdent "app")) [bKt]
       exprToKt (Case _ compareVals caseAlternatives) = ktWhenExpr . concat <$> mapM (caseToKt compareVals) caseAlternatives
+      exprToKt (Accessor _ key obj) = do
+         ktObj <- exprToKt obj
+         return $ ktObjectAccess (ktCast ktObj $ varRefUnqual mapType) (ktString key)
+      exprToKt (Let _ binds body) = do
+         ktBinds <- concatMapM bindToKt binds 
+         ktBody <- exprToKt body
+         return $ ktStmt $ ktBinds ++ [ktBody]
       exprToKt a = pTraceShow a undefined
       
       caseToKt :: MonadSupply m => [Expr Ann] -> CaseAlternative Ann -> m [WhenCase KtExpr]
@@ -195,6 +208,12 @@ moduleToKt mod = sequence
          pure
             ( ktIsType compareVal (ktProperty (ktVarRef ktTypeIdent) (ktVarRef ktCtorName)) : concat (fst <$> subBindersExprs)
             , concat $ snd <$> subBindersExprs
+            )
+      binderToKt compareVal (ConstructorBinder (_, _, _, Just IsNewtype) tyName ctorName [subBinder]) = do
+         (guards, stmts) <- binderToKt compareVal subBinder 
+         pure
+            ( guards
+            , stmts
             )
       binderToKt compareVal (NamedBinder _ ident subBinder) = do
          ktIdent <- ktIdentFromIdent ident

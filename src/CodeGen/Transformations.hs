@@ -31,6 +31,10 @@ import CodeGen.KtCore
 import Data.Functor.Foldable
 import Data.Maybe  (fromJust)
 
+normalize :: KtExpr -> KtExpr
+normalize = addElseCases
+  . classesEnsureArgument
+
 addElseCases :: KtExpr -> KtExpr
 addElseCases = cata alg where
   alg :: KtExprF KtExpr -> KtExpr
@@ -41,3 +45,7 @@ addElseCases = cata alg where
       where 
         errorMsg = ktCall (varRefUnqual $ MkKtIdent "error") [ktString "Error in Pattern Match"]
   alg a = Fix a
+
+classesEnsureArgument :: KtExpr -> KtExpr
+classesEnsureArgument = cata (Fix . alg) where
+  alg a = a

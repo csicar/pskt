@@ -76,8 +76,8 @@ data KtExprF r
   = Package [ProperName Namespace]
   | Import [ProperName Namespace] KtIdent
   | Stmt [r]
-  | ObjectDecl KtIdent r
-  -- ^ object: name; body
+  | ObjectDecl KtIdent [r] r
+  -- ^ object: name; extends; body
   | ClassDecl [KtModifier] KtIdent [KtIdent] [r] r
   -- ^ class modifier; name; arguments; extends; body
   | If r r (Maybe r)
@@ -100,32 +100,8 @@ $(deriveShow1 ''KtExprF)
 
 type KtExpr = Fix KtExprF
 
-renameIdent :: (Qualified KtIdent -> Qualified KtIdent) -> KtExpr -> KtExpr
-renameIdent f = cata (Fix . alg) where
-  alg :: KtExprF KtExpr -> KtExprF KtExpr
-  alg (VarRef qualIdent) = VarRef $ f qualIdent
-  alg (FunRef qualIdent) = FunRef $ f qualIdent
-  alg a = a
-
--- everywhere :: MonadSupply m => (KtExpr -> m KtExpr) -> KtExpr -> m KtExpr
--- everywhere f (Stmt as) = Stmt <$> mapM f as
--- everywhere f (ObjectDecl a b) = ObjectDecl a <$> f b
--- everywhere f (ClassDecl a b c args body) = do
---   args' <- mapM (everywhere f) 
---   pure $ ClassDecl a b c args' body'
--- everywhere f (If KtExpr KtExpr (Maybe KtExpr)) = Stmt 
--- everywhere f (WhenExpr [WhenCase KtExpr]) = Stmt 
--- everywhere f (VariableIntroduction KtIdent KtExpr) = Stmt 
--- everywhere f (Binary BinOp KtExpr KtExpr) = Stmt 
--- everywhere f (Property KtExpr KtExpr) = Stmt 
--- everywhere f (ArrayAccess KtExpr KtExpr) = Stmt 
--- everywhere f (ObjectAccess KtExpr KtExpr) = Stmt 
--- everywhere f (VarRef (Qualified KtIdent)) = Stmt 
--- everywhere f (Cast KtExpr KtExpr) = Stmt 
--- everywhere f (Fun (Maybe KtIdent) KtIdent KtExpr) = Stmt 
--- everywhere f (Lambda KtIdent KtExpr) = Stmt 
--- everywhere f (Call KtExpr [KtExpr]) = Stmt 
--- everywhere f (Const (Literal KtExpr)) = Stmt 
+mapType :: KtIdent
+mapType = MkKtIdent "Map<String, Any>"
 
 freshText :: MonadSupply m => Text -> m Text
 freshText hint = (("_" <> hint) <>) . T.pack . show <$> fresh
@@ -142,7 +118,7 @@ identFromCtorName :: MonadSupply m => ProperName ConstructorName -> m KtIdent
 identFromCtorName (ProperName txt) = return $ MkKtIdent $ unreserve txt
 
 identFromTypeName :: MonadSupply m => ProperName TypeName -> m KtIdent
-identFromTypeName (ProperName txt) = return $ MkKtIdent $ ("_Type"<>) $ unreserve txt
+identFromTypeName (ProperName txt) = return $ MkKtIdent $ ("_Type_"<>) $ unreserve txt
 
 ktIdentFromIdent :: MonadSupply m => Ident -> m KtIdent
 ktIdentFromIdent ident = return $ MkKtIdent $ unreserve $ runIdent ident
@@ -187,7 +163,7 @@ ktArrayAccess a b = Fix $ ArrayAccess a b
 ktObjectAccess a b = Fix $ ObjectAccess a b
 
 ktLambda a b = Fix $ Lambda a b
-ktObjectDecl a b = Fix $ ObjectDecl a b
+ktObjectDecl a b c = Fix $ ObjectDecl a b c
 
 ktClassDecl a b c d e = Fix $ ClassDecl a b c d e
 
@@ -200,3 +176,5 @@ ktImport a b = Fix $ Import a b
 ktFun a b c = Fix $ Fun a b c
 
 ktFunRef = Fix . FunRef
+
+ktCast a b = Fix $ Cast a b
