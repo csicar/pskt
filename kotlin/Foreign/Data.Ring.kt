@@ -1,4 +1,4 @@
-package Data.Ring;
+package Foreign.Data.Ring;
 
 val intSub = { x : Any -> { y: Any ->
   x as Int; y as Int

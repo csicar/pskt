@@ -173,7 +173,8 @@ moduleToKt mod = sequence
                   -- TODO: guards can refer to variables from binders.
                   -- this is currently not taken account for
                   genGuard (cond, val) = do
-                     ktCond <- exprToKt cond
+                     -- ktCond contains references to values in `assignments`
+                     ktCond <- ktAsBool <$> exprToKt cond
                      ktVal <- exprToKt val
                      pure $ WhenCase (ktCond : concat guards) (ktStmt $ concat assignments ++ [ktVal])
 

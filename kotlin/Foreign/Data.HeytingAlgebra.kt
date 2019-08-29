@@ -1,4 +1,4 @@
-package Data.HeytingAlgebra;
+package Foreign.Data.HeytingAlgebra;
 
 val boolConj = { b1: Any -> { b2: Any -> 
   b1 as Boolean; b2 as Boolean

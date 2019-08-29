@@ -1,4 +1,4 @@
-package Effect;
+package Foreign.Effect;
 
 val pureE = { a : Any -> {
   a
@@ -23,7 +23,7 @@ val whileE = { f: Any -> { a: Any -> {
     a()
   };
   Unit;
-}}
+}}}
 val forE = { lo : Any -> { hi : Any -> { f : Any -> {
   lo as Int; hi as Int; f as (Int) -> Any
 
@@ -39,4 +39,4 @@ val foreachE = { ls : Any -> { f : Any -> {
     (f(it) as () -> Any)();
   }
   Unit;
-}}}}
+}}}
