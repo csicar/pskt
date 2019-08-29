@@ -30,10 +30,11 @@ import CodeGen.Constants
 import CodeGen.KtCore
 import Data.Functor.Foldable
 import Data.Maybe  (fromJust)
+import qualified Language.PureScript.Constants as C
 
 normalize :: KtExpr -> KtExpr
 normalize = addElseCases
-  . classesEnsureArgument
+  . primUndefToUnit
 
 addElseCases :: KtExpr -> KtExpr
 addElseCases = cata alg where
@@ -41,11 +42,14 @@ addElseCases = cata alg where
   alg (WhenExpr cases) = ktWhenExpr $ reverse $ case reverse cases of
       [] -> []
       (WhenCase [] b : cs) -> ElseCase b : cs
-      cs -> cs ++ [ ElseCase errorMsg ]
+      cs -> ElseCase errorMsg : cs
       where 
         errorMsg = ktCall (varRefUnqual $ MkKtIdent "error") [ktString "Error in Pattern Match"]
   alg a = Fix a
 
-classesEnsureArgument :: KtExpr -> KtExpr
-classesEnsureArgument = cata (Fix . alg) where
+-- `Prim.undefined` is used for arguments that are not used by the reciever (from what I can tell)
+-- we'll give `Prim.undefined` the value Unit
+primUndefToUnit :: KtExpr -> KtExpr
+primUndefToUnit = cata (Fix . alg) where
+  alg (VarRef (Qualified (Just PrimModule) (MkKtIdent ident))) | ident == C.undefined = VarRef $ Qualified Nothing (MkKtIdent "Unit")
   alg a = a

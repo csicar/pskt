@@ -33,6 +33,7 @@ import Data.Maybe  (fromJust)
 import CodeGen.Transformations
 import Data.Functor.Foldable (Fix(..), cata)
 
+
 moduleToKt' mod = evalSupply 0 (moduleToKt mod)
 
 
@@ -50,25 +51,26 @@ moduleToKt :: MonadSupply m => Module Ann -> m [KtExpr]
 moduleToKt mod = sequence
    [ pure $ packageDecl (moduleName mod)
    , pure $ ktImport [ProperName "Foreign", ProperName "PsRuntime"] (MkKtIdent "app")
-   , addElseCases <$> moduleToObject mod
+   , normalize <$> moduleToObject mod
    ]
    where
-      splitModule (ModuleName parts) = splitLast psNamespace parts
-
       packageDecl :: ModuleName -> KtExpr
-      packageDecl modName = ktPackage 
-         $ fst 
-         $ splitModule modName
+      packageDecl (ModuleName mn) = ktPackage $ psNamespace : mn
 
       moduleToObject :: MonadSupply m => Module Ann -> m KtExpr
       moduleToObject mod = do
          let (normalDecls, classDecls) = splitDeclarations (moduleDecls mod)
+         foreigns <- foreignToKt `mapM` moduleForeign mod
          decls <- mapM classDeclsToKt classDecls
-         body <- mapM bindToKt normalDecls 
-         objectName <- identFromNameSpace objectName
-         return $ ktObjectDecl objectName [] $ ktStmt $ concat decls ++ concat body
-         where
-            objectName = snd $ splitModule (moduleName mod)
+         body <- mapM (bindToKt ktJvmValue) normalDecls 
+         let objectName = MkKtIdent "Module"
+         return $ ktObjectDecl objectName [] $ ktStmt $ foreigns ++ concat decls ++ concat body
+
+      foreignToKt :: MonadSupply m => Ident -> m KtExpr
+      foreignToKt ident = do
+         ktIdent <- ktIdentFromIdent ident
+         let foreignModule = let (ModuleName pns) = moduleName mod in ModuleName $ ProperName "Foreign" : pns
+         pure $ ktVariable ktIdent $ ktVarRef (Qualified (Just foreignModule) ktIdent)
 
       classDeclsToKt :: MonadSupply m => DataTypeDecl -> m [KtExpr]
       classDeclsToKt (DataTypeDecl tyName constructors) = do
@@ -106,13 +108,13 @@ moduleToKt mod = sequence
             groupToDecl :: Bind Ann -> DataCtorDecl
             groupToDecl (NonRec _ _ (Constructor _ _ ctorName idents)) = DataCtorDecl ctorName idents
 
-      bindToKt :: MonadSupply m => Bind Ann -> m [KtExpr]
+      bindToKt :: MonadSupply m => (KtExpr -> KtExpr) -> Bind Ann -> m [KtExpr]
       --TODO: split binder into (Constructor ...) and others
-      bindToKt (NonRec _ ident val) = do
+      bindToKt modDecls (NonRec _ ident val) = do
             ktVal <- exprToKt val
             ktIdent <- ktIdentFromIdent ident
-            return [ ktVariable ktIdent ktVal ]
-      bindToKt (Rec bindings) = do
+            return [ modDecls $ ktVariable ktIdent ktVal ]
+      bindToKt modDecls (Rec bindings) = do
          converted <- mapM go bindings
          pure $ replaceRecNames (snd <$> converted) <$> concat (fst <$> converted)
          where
@@ -123,19 +125,19 @@ moduleToKt mod = sequence
             replaceRecName :: (KtIdent, KtIdent) -> KtExpr -> KtExpr
             replaceRecName (original, new) = cata (Fix . alg) where
                alg (VarRef (Qualified modName' name)) 
-                  | (name == original) && maybe True (== (ModuleName $ (\(a, b) -> a++[b]) $ splitModule $ moduleName mod)) modName' = 
-                     FunRef (Qualified Nothing new)
+                  | (name == original) && maybe True (== moduleName mod) modName' = 
+                     Call (varRefUnqual new) []
                alg a = a
             go :: MonadSupply m => ((a, Ident), Expr Ann) -> m ([KtExpr], (KtIdent, KtIdent))
-            go ((_, ident), val@(Abs _ arg body)) = do
+            go ((_, ident), val) = do
                ktVal <- exprToKt val
                ktIdent <- ktIdentFromIdent ident
-               ktArg <- ktIdentFromIdent arg
-               ktBody <- exprToKt body
                let recFuncName = genRecName ktIdent
-               let normalVar = ktVariable ktIdent (ktFunRef (Qualified Nothing recFuncName))
-               
-               return ([ ktFun (Just recFuncName) ktArg ktBody, normalVar ], (ktIdent, recFuncName))
+               let normalVar = modDecls $ ktVariable ktIdent (ktFunRef (Qualified Nothing recFuncName))
+               return ([ ktFun' (Just recFuncName) [] ktVal, normalVar ], (ktIdent, recFuncName))
+            -- recursion with anything but a abs
+            -- for this, the value is turned into a argumentless function and called to get the value
+            -- go ((_, ident), a) = return $ pTraceShow bindings undefined
 
       exprToKt :: MonadSupply m => Expr Ann -> m KtExpr
       exprToKt (Var _ qualIdent) = qualifiedIdentToKt qualIdent
@@ -153,7 +155,7 @@ moduleToKt mod = sequence
          ktObj <- exprToKt obj
          return $ ktObjectAccess (ktCast ktObj $ varRefUnqual mapType) (ktString key)
       exprToKt (Let _ binds body) = do
-         ktBinds <- concatMapM bindToKt binds 
+         ktBinds <- concatMapM (bindToKt identity) binds 
          ktBody <- exprToKt body
          return $ ktStmt $ ktBinds ++ [ktBody]
       exprToKt a = pTraceShow a undefined
@@ -202,11 +204,11 @@ moduleToKt mod = sequence
       binderToKt _ NullBinder{} = pure ([], [])
       binderToKt compareVal (ConstructorBinder (_, _, _, Just (IsConstructor _ ctorParams)) tyName ctorName subBinders) = do
          ktTypeIdent <- qualifiedToKt identFromTypeName tyName
-         ktCtorName <- qualifiedToKt identFromCtorName ctorName
+         (Qualified _ ktCtorName) <- qualifiedToKt identFromCtorName ctorName
          ktCtorParams <- mapM ktIdentFromIdent ctorParams
          subBindersExprs <- zipWithM (\ident binder -> binderToKt (ktProperty compareVal (varRefUnqual ident)) binder) ktCtorParams subBinders
          pure
-            ( ktIsType compareVal (ktProperty (ktVarRef ktTypeIdent) (ktVarRef ktCtorName)) : concat (fst <$> subBindersExprs)
+            ( ktIsType compareVal (ktProperty (ktVarRef ktTypeIdent) (varRefUnqual ktCtorName)) : concat (fst <$> subBindersExprs)
             , concat $ snd <$> subBindersExprs
             )
       binderToKt compareVal (ConstructorBinder (_, _, _, Just IsNewtype) tyName ctorName [subBinder]) = do

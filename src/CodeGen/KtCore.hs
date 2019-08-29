@@ -26,6 +26,7 @@ import Language.PureScript.AST.SourcePos (displayStartEndPos)
 import CodeGen.Constants
 import Data.Functor.Foldable
 import Text.Show.Deriving (deriveShow1)
+import Control.Arrow ((>>>))
 
 data WhenCase a
   -- Conditions, return value
@@ -89,11 +90,12 @@ data KtExprF r
   | ObjectAccess r r
   | VarRef (Qualified KtIdent)
   | Cast r r
-  | Fun (Maybe KtIdent) KtIdent r
+  | Fun (Maybe KtIdent) [KtIdent] r
   | FunRef (Qualified KtIdent)
   | Lambda KtIdent r
   | Call r [r]
   | Const (Literal r)
+  | Annotated r r
   deriving (Show, Functor)
 
 $(deriveShow1 ''KtExprF)
@@ -107,9 +109,24 @@ freshText :: MonadSupply m => Text -> m Text
 freshText hint = (("_" <> hint) <>) . T.pack . show <$> fresh
 
 unreserve :: Text -> Text
-unreserve txt | "_" `T.isPrefixOf` txt = "_" <> txt
-unreserve txt | isReserved txt = "_" <> txt
-unreserve txt = txt
+unreserve = renameUnused
+  >>> prefixUnderscore 
+  >>> escapeReserved 
+  >>> T.concatMap escapeSpecialChars
+  where
+    renameUnused "$__unused" = "_"
+    renameUnused t = t
+
+    prefixUnderscore "_" = "_"
+    prefixUnderscore txt | "_" `T.isPrefixOf` txt = "_" <> txt
+    prefixUnderscore txt = txt
+
+    escapeReserved txt | isReserved txt = "_" <> txt
+    escapeReserved txt = txt
+
+    escapeSpecialChars '$' = "_dollar"
+    escapeSpecialChars '\'' = "_tick"
+    escapeSpecialChars c = T.singleton c
 
 identFromNameSpace :: MonadSupply m => ProperName Namespace -> m KtIdent
 identFromNameSpace (ProperName txt) = return $ MkKtIdent $ unreserve txt
@@ -128,21 +145,27 @@ varRefUnqual = Fix . VarRef . Qualified Nothing
 qualifiedToKt :: MonadSupply m => (a -> m b) -> Qualified a -> m (Qualified b)
 qualifiedToKt f (Qualified mModName a) = do
   res <- f a
-  return $ Qualified (prependPsNamespace <$> mModName) res
+  return $ Qualified (go <$> mModName) res
   where
-      prependPsNamespace (ModuleName ls) = ModuleName $ psNamespace : ls
+      go (ModuleName ls) = ModuleName $ psNamespace : ls ++ [moduleNamespace]
 
 qualifiedIdentToKt :: MonadSupply m => Qualified Ident -> m KtExpr
 qualifiedIdentToKt qualIdent = Fix . VarRef <$> qualifiedToKt ktIdentFromIdent qualIdent
 
 getLength :: KtExpr -> KtExpr
-getLength a = ktProperty a $ varRefUnqual $ MkKtIdent "size"
+getLength a = ktProperty (ktCast a (varRefUnqual $ MkKtIdent "List<Any>")) (varRefUnqual $ MkKtIdent "size")
 
 ktInt :: Integer -> KtExpr
 ktInt = ktConst . NumericLiteral . Left
 
 ktString :: PSString -> KtExpr
 ktString = ktConst . StringLiteral
+
+ktJvmValue :: KtExpr -> KtExpr
+ktJvmValue = ktAnnotated (varRefUnqual $ MkKtIdent "JvmField")
+
+ktAsBool :: KtExpr -> KtExpr
+ktAsBool a = ktCast a (varRefUnqual $ MkKtIdent "Boolean")
 
 ktConst = Fix . Const
 
@@ -173,8 +196,12 @@ ktPackage = Fix . Package
 
 ktImport a b = Fix $ Import a b
 
-ktFun a b c = Fix $ Fun a b c
+ktFun' a b c = Fix $ Fun a b c
+
+ktFun a b = ktFun' a [b]
 
 ktFunRef = Fix . FunRef
 
 ktCast a b = Fix $ Cast a b
+
+ktAnnotated a b = Fix $ Annotated a b

@@ -17,6 +17,10 @@ import Language.PureScript.PSString (prettyPrintStringJS, PSString)
 psNamespace :: ProperName Namespace
 psNamespace = ProperName "PS"
 
+moduleNamespace :: ProperName Namespace
+moduleNamespace = ProperName "Module"
+
+pattern PrimModule = ModuleName [ProperName "PS", ProperName "Prim", ProperName "Module"]
 
 isReserved :: Text -> Bool
 isReserved = (`elem` allReserved)
