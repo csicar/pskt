@@ -47,6 +47,11 @@ data DataCtorDecl = DataCtorDecl
    , parameter :: [Ident]
    }
 
+data Replacement = Replacement
+   { ident :: KtIdent
+   , replacement :: KtExpr
+   }
+
 moduleToKt :: MonadSupply m => Module Ann -> m [KtExpr]
 moduleToKt mod = sequence
    [ pure $ packageDecl (moduleName mod)
@@ -163,27 +168,35 @@ moduleToKt mod = sequence
       caseToKt :: MonadSupply m => [Expr Ann] -> CaseAlternative Ann -> m [WhenCase KtExpr]
       caseToKt compareVals (CaseAlternative binders caseResult) = do
          ktCompareVals <- mapM exprToKt compareVals
-         (guards, assignments) <- transposeTuple <$> zipWithM binderToKt ktCompareVals binders
+         (guards, replacements) <- transposeTuple <$> zipWithM binderToKt ktCompareVals binders
+         let assignments = replacementToAssignment <$> concat replacements
          case caseResult of
             (Right result) -> do
                ktBody <- exprToKt result
-               pure [WhenCase (concat guards) (ktStmt $ concat assignments ++ [ktBody])]
+               pure [WhenCase (concat guards) (ktStmt $ assignments ++ [ktBody])]
             (Left guardedExpr) -> traverse genGuard guardedExpr
                where 
                   -- TODO: guards can refer to variables from binders.
                   -- this is currently not taken account for
                   genGuard (cond, val) = do
                      -- ktCond contains references to values in `assignments`
-                     ktCond <- ktAsBool <$> exprToKt cond
+                     -- use replacements for this
+                     ktCond <- ktAsBool . replaceBindersWithReferences (concat replacements) <$> exprToKt cond
                      ktVal <- exprToKt val
-                     pure $ WhenCase (ktCond : concat guards) (ktStmt $ concat assignments ++ [ktVal])
+                     pure $ WhenCase (ktCond : concat guards) (ktStmt $ assignments ++ [ktVal])
 
-      binderToKt :: MonadSupply m => KtExpr -> Binder Ann -> m ([KtExpr], [KtExpr])
+      replaceBindersWithReferences :: [Replacement] -> KtExpr -> KtExpr
+      replaceBindersWithReferences replacements expr = foldr (cata . alg) expr replacements
+         where
+            alg (Replacement ident ref) (VarRef (Qualified Nothing ident')) | ident == ident' = ref
+            alg _ a = Fix a
+
+      binderToKt :: MonadSupply m => KtExpr -> Binder Ann -> m ([KtExpr], [Replacement]) -- ([binder], [{identToReplace, exprThatReplacesIt}])
       binderToKt compareVal (VarBinder _ ident) = do
          ktIdent <- ktIdentFromIdent ident
          pure 
             ( []
-            , [ktVariable ktIdent compareVal]
+            , [Replacement ktIdent compareVal]
             )
       binderToKt compareVal (LiteralBinder _ literal) = do
          literalValue <- forMLitKey literal
@@ -220,12 +233,15 @@ moduleToKt mod = sequence
             )
       binderToKt compareVal (NamedBinder _ ident subBinder) = do
          ktIdent <- ktIdentFromIdent ident
-         (guards, assignments) <- binderToKt compareVal subBinder
+         (guards, replacements) <- binderToKt compareVal subBinder
          pure 
             ( guards
-            , ktVariable ktIdent compareVal : assignments
+            , Replacement ktIdent compareVal : replacements
             )
       binderToKt compareVal binder = pure $ pTraceShow (compareVal, binder) undefined
+
+      replacementToAssignment :: Replacement -> KtExpr
+      replacementToAssignment (Replacement ident val) = ktVariable ident val
 
 transposeTuple :: [(a, b)] -> ([a], [b])
 transposeTuple ls = (fst <$> ls, snd <$> ls)
