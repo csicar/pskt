@@ -60,53 +60,63 @@ printQualified :: (a -> Doc()) -> Qualified a -> Doc ()
 printQualified p (Qualified Nothing a) = p a
 printQualified p (Qualified (Just mod) a) = pretty (runModuleName mod) <> "." <> p a
 
-printLiteral :: Literal (Doc ()) -> Doc ()
+printLiteral :: Literal (KtExpr, Doc ()) -> Doc ()
 printLiteral (NumericLiteral (Left a))= pretty (show a)
 printLiteral (NumericLiteral (Right a))= pretty (show a)
 printLiteral (StringLiteral a) = pretty (show a)
 printLiteral (CharLiteral a) = pretty (show a)
 printLiteral (BooleanLiteral a) = if a then "true" else "false"
-printLiteral (ArrayLiteral []) = printExprAlg (Call "emptyList<Any>" [])
-printLiteral (ArrayLiteral as) = printExprAlg (Call "listOf" as)
-printLiteral (ObjectLiteral []) = printExprAlg $ Call "emptyMap<String, Any>" []
-printLiteral (ObjectLiteral as) = printExprAlg $ Call "mapOf" $ (\(key, val) -> pretty (show key) <+> "to" <+> val) <$> as
+printLiteral (ArrayLiteral []) = printExprAlg (Call (emptyList, printExpr emptyList) [])
+   where emptyList = varRefUnqual $ MkKtIdent "emptyList<Any>"
+printLiteral (ArrayLiteral as) = printExprAlg (Call (listOf, printExpr listOf) as)
+   where listOf = varRefUnqual (MkKtIdent "listOf")
+printLiteral (ObjectLiteral []) = printExprAlg $ Call (emptyMap, printExpr emptyMap) []
+   where emptyMap = varRefUnqual $ MkKtIdent "emptyMap<String, Any>"
+printLiteral (ObjectLiteral as) = printExprAlg $ 
+      -- TODO: printExpr $ pairOf recalculates the printvalue of valExpr. fix that
+      Call (mapOf, printExpr mapOf) $ (\(key, (valExpr, val)) -> (pairOf key valExpr, printExpr $ pairOf key valExpr)) <$> as
+   where 
+      mapOf = varRefUnqual (MkKtIdent "mapOf")
+      pairOf key = ktPair (ktString key)
 
 
 printExpr :: KtExpr -> Doc ()
-printExpr = cata printExprAlg
+printExpr = para printExprAlg
 
 extendsDoc = \case  
    [] -> ""
    extends -> ":" <+> hsep extends
 
-printExprAlg :: KtExprF (Doc ()) -> Doc ()
+printExprAlg :: KtExprF (KtExpr, Doc ()) -> Doc ()
 printExprAlg (Package ns) = "package" <+> joinWith' "." (pretty . runProperName <$> ns)
 printExprAlg (Import ns val) = "import" <+> joinWith' "." (pretty . runProperName <$> ns) <> "." <> printKtIdent val
 printExprAlg (Stmt []) = "{}"
-printExprAlg (Stmt stmts) = braceNested $ vsep stmts
-printExprAlg (ObjectDecl ident extends body) = "object" <+> printKtIdent ident <+> extendsDoc extends <+> body
-printExprAlg (ClassDecl mods name args extends body) =
+printExprAlg (Stmt stmts) = braceNested $ vsep $ snd <$> stmts
+printExprAlg (ObjectDecl ident extends (_, body)) = "object" <+> printKtIdent ident <+> extendsDoc (snd <$> extends) <+> body
+printExprAlg (ClassDecl mods name args extends (_, body)) =
       hsep (printKtModifier <$> mods) <+> "class" <+> printKtIdent name 
-         <+> parens (commaSep $ ("val"<+>) . (<+> ": Any") . printKtIdent <$> args) <+> extendsDoc extends <+> body
+         <+> parens (commaSep $ ("val"<+>) . (<+> ": Any") . printKtIdent <$> args) <+> extendsDoc (snd <$> extends) <+> body
 printExprAlg (VarRef qualIdent) = printQualified printKtIdent qualIdent
-printExprAlg (Call a args) = a <> parens (commaSep args)
-printExprAlg (VariableIntroduction ident a) = "val" <+> printKtIdent ident <+> "=" <+> a
-printExprAlg (Lambda arg body) = braceNested $ printKtIdent arg <+> ": Any ->" <+> body
-printExprAlg (Fun mName args body) = 
+printExprAlg (Call (_, a) args) = a <> parens (commaSep $ snd <$> args)
+printExprAlg (VariableIntroduction ident (_, a)) = "val" <+> printKtIdent ident <+> "=" <+> a
+printExprAlg (Lambda arg (Fix (Stmt stmts), body)) = braceNested $ printKtIdent arg <+> ": Any ->" <> line <> nest' (vsep (printExpr <$> stmts))
+printExprAlg (Lambda arg (_, body)) = braceNested $ printKtIdent arg <+> ": Any ->" <+> body
+printExprAlg (Fun mName args (_, body)) = 
    "fun" <+> maybe "" printKtIdent mName <> parens (commaSep $ (<+> ": Any") . printKtIdent <$> args) <> ": Any =" <+> body
-printExprAlg (Property a b) = a <> "." <> b
+printExprAlg (Property (_, a) (_, b)) = a <> "." <> b
 printExprAlg (FunRef qualIdent) = parens $ "::" <> printQualified printKtIdent qualIdent
 printExprAlg (Const lit) = printLiteral lit
-printExprAlg (WhenExpr cases) = "when" <+> braceNested (vsep $ printWhenCases <$> cases)
-printExprAlg (Binary op a b) = parens $ a <+> printOp op <+> b
-printExprAlg (ObjectAccess obj key) = obj <> brackets key <> "!!"
-printExprAlg (Cast a b) = parens $ a <+> "as" <+> b
-printExprAlg (Annotated ann expr) = "@" <> ann <> softline <> expr
+printExprAlg (WhenExpr cases) = "when" <+> braceNested (vsep $ printWhenCases . fmap snd <$> cases)
+printExprAlg (Binary op (_, a) (_, b)) = parens $ a <+> printOp op <+> b
+printExprAlg (ObjectAccess (_, obj) (_, key)) = obj <> brackets key <> "!!"
+printExprAlg (Cast (_, a) (_, b)) = parens $ a <+> "as" <+> b
+printExprAlg (Annotated (_, ann) (_, expr)) = "@" <> ann <> softline <> expr
 printExprAlg a = pretty $ show a
 
 printOp Equals = "=="
 printOp IsType = "is"
 printOp And = "&&"
+printOp To = "to"
 
 printWhenCases (WhenCase conds body) = joinWith "&&" (ensureOneElement conds) <+> "->" <+> body
    where 

@@ -41,6 +41,7 @@ data BinOp
   = Equals
   | IsType
   | And
+  | To -- for Pairs: `1 to "Hi"`
   deriving (Show)
 
 newtype KtIdent = MkKtIdent Text deriving (Show, Eq)
@@ -171,6 +172,7 @@ ktConst = Fix . Const
 
 ktEq a b = Fix $ Binary Equals a b
 ktIsType a b = Fix $ Binary IsType a b
+ktPair a b = Fix $ Binary To a b
 
 ktProperty a b = Fix $ Property a b
 
