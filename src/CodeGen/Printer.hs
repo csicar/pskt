@@ -97,20 +97,23 @@ printExprAlg (ClassDecl mods name args extends (_, body)) =
       hsep (printKtModifier <$> mods) <+> "class" <+> printKtIdent name 
          <+> parens (commaSep $ ("val"<+>) . (<+> ": Any") . printKtIdent <$> args) <+> extendsDoc (snd <$> extends) <+> body
 printExprAlg (VarRef qualIdent) = printQualified printKtIdent qualIdent
-printExprAlg (Call (_, a) args) = a <> parens (commaSep $ snd <$> args)
+printExprAlg (Call (_, a) args) = group $ nest' (a <> "(" <> commaSep ((softline' <>) . snd <$> args)) <> softline' <> ")"
 printExprAlg (VariableIntroduction ident (_, a)) = "val" <+> printKtIdent ident <+> "=" <+> a
-printExprAlg (Lambda arg (Fix (Stmt stmts), body)) = braceNested $ printKtIdent arg <+> ": Any ->" <> line <> nest' (vsep (printExpr <$> stmts))
-printExprAlg (Lambda arg (_, body)) = braceNested $ printKtIdent arg <+> ": Any ->" <+> body
+printExprAlg (Lambda arg (Fix (Stmt stmts), body)) = braces $ nest' $ 
+   " " <> printKtIdent arg <+> ": Any ->" <> line' <> nest' (vsep (printExpr <$> stmts))
+printExprAlg (Lambda arg (_, body)) = braces $ (<> line') $ nest' $
+   " " <> printKtIdent arg <+> ": Any ->" <> line' <+> body
 printExprAlg (Fun mName args (_, body)) = 
    "fun" <+> maybe "" printKtIdent mName <> parens (commaSep $ (<+> ": Any") . printKtIdent <$> args) <> ": Any =" <+> body
-printExprAlg (Property (_, a) (_, b)) = a <> "." <> b
+   -- printExprAlg (Property (_, a) (_, b)) = group $ nest' $ a <> line <> "."  <> b
+printExprAlg (Property (_, a) (_, b)) = align $ nest' $ a <> line' <> "."  <> b
 printExprAlg (FunRef qualIdent) = parens $ "::" <> printQualified printKtIdent qualIdent
 printExprAlg (Const lit) = printLiteral lit
 printExprAlg (WhenExpr cases) = "when" <+> braceNested (vsep $ printWhenCases . fmap snd <$> cases)
 printExprAlg (Binary op (_, a) (_, b)) = parens $ a <+> printOp op <+> b
 printExprAlg (ObjectAccess (_, obj) (_, key)) = obj <> brackets key <> "!!"
 printExprAlg (Cast (_, a) (_, b)) = parens $ a <+> "as" <+> b
-printExprAlg (Annotated (_, ann) (_, expr)) = "@" <> ann <> softline <> expr
+printExprAlg (Annotated (_, ann) (_, expr)) = "@" <> ann <> line <> expr
 printExprAlg a = pretty $ show a
 
 printOp Equals = "=="
@@ -118,7 +121,7 @@ printOp IsType = "is"
 printOp And = "&&"
 printOp To = "to"
 
-printWhenCases (WhenCase conds body) = joinWith "&&" (ensureOneElement conds) <+> "->" <+> body
+printWhenCases (WhenCase conds body) = group (joinWith "&&" (ensureOneElement conds) <+> "->") <+> body
    where 
       ensureOneElement [] = ["true"]
       ensureOneElement a = a

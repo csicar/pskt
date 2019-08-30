@@ -133,12 +133,12 @@ moduleToKt mod = sequence
                   | (name == original) && maybe True (== moduleName mod) modName' = 
                      Call (varRefUnqual new) []
                alg a = a
-            go :: MonadSupply m => ((a, Ident), Expr Ann) -> m ([KtExpr], (KtIdent, KtIdent))
+            go :: MonadSupply m => ((a, Ident), Expr Ann) -> m ([KtExpr], (KtIdent, KtIdent)) -- (decls, (normalIdent, recIdent))
             go ((_, ident), val) = do
                ktVal <- exprToKt val
                ktIdent <- ktIdentFromIdent ident
                let recFuncName = genRecName ktIdent
-               let normalVar = modDecls $ ktVariable ktIdent (ktFunRef (Qualified Nothing recFuncName))
+               let normalVar = modDecls $ ktVariable ktIdent $ ktCall (ktFunRef (Qualified Nothing recFuncName)) []
                return ([ ktFun' (Just recFuncName) [] ktVal, normalVar ], (ktIdent, recFuncName))
             -- recursion with anything but a abs
             -- for this, the value is turned into a argumentless function and called to get the value
