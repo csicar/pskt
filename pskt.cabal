@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7c9586a45ef613018d69198d1889c9f63062a65fd23a30dce07d1bae8f6067fa
+-- hash: 8e26bf02938a8ed7a12184be3c98ea1fcf1d3dfc8c549a4304462f946cb5ef09
 
 name:           pskt
 version:        0.1.0.0
@@ -30,7 +30,9 @@ library
   exposed-modules:
       CodeGen.Constants
       CodeGen.CoreImp
+      CodeGen.Transformations
       CodeGen.KtCore
+      CodeGen.Printer
   other-modules:
       Paths_pskt
   hs-source-dirs:
@@ -55,6 +57,8 @@ library
     , prettyprinter >=1.3.0
     , process
     , protolude >=0.1.6
+    , recursion-schemes
+    , deriving-compat
     , purescript
     , safe >=0.3.9 && <0.4
     , text
@@ -88,6 +92,8 @@ executable pskt
     , process
     , protolude >=0.1.6
     , pskt
+    , shelly
+    , system-filepath
     , purescript
     , safe >=0.3.9 && <0.4
     , text

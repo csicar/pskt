@@ -69,7 +69,7 @@ moduleToKt mod = sequence
          decls <- mapM classDeclsToKt classDecls
          body <- mapM (bindToKt ktJvmValue) normalDecls 
          let objectName = MkKtIdent "Module"
-         return $ ktObjectDecl objectName [] $ ktStmt $ foreigns ++ concat decls ++ concat body
+         return $ ktObjectDecl objectName [] $ ktStmt $ foreigns ++ concat decls ++ concatMap (\(normalDefs, _, recDefs) -> normalDefs ++ recDefs) body
 
       foreignToKt :: MonadSupply m => Ident -> m KtExpr
       foreignToKt ident = do
@@ -113,15 +113,19 @@ moduleToKt mod = sequence
             groupToDecl :: Bind Ann -> DataCtorDecl
             groupToDecl (NonRec _ _ (Constructor _ _ ctorName idents)) = DataCtorDecl ctorName idents
 
-      bindToKt :: MonadSupply m => (KtExpr -> KtExpr) -> Bind Ann -> m ([KtExpr], [KtExpr]) -- (normal, recursive)
+      bindToKt :: MonadSupply m => (KtExpr -> KtExpr) -> Bind Ann -> m ([KtExpr], [KtIdent], [KtExpr]) -- (normalDef, normalRef, recursive)
       --TODO: split binder into (Constructor ...) and others
       bindToKt modDecls (NonRec _ ident val) = do
             ktVal <- exprToKt val
             ktIdent <- ktIdentFromIdent ident
-            return [ modDecls $ ktVariable ktIdent ktVal ]
+            return ([ modDecls $ ktVariable ktIdent ktVal ], [ktIdent], [])
       bindToKt modDecls (Rec bindings) = do
          converted <- mapM go bindings
-         pure $ replaceRecNames (snd <$> converted) <$> concat (fst <$> converted)
+         let names = (\((normalName, _), (recursiveName, _)) -> (normalName, recursiveName)) <$> converted
+         let normalDecls = snd . fst <$> converted
+         let recursiveDecls = snd . snd <$> converted
+
+         pure (replaceRecNames names <$> normalDecls, fst . fst <$> converted, replaceRecNames names <$> recursiveDecls)
          where
             genRecTxt name = "_rec_"<> name
             genRecName (MkKtIdent name) = MkKtIdent $ "_" <> genRecTxt name
@@ -133,13 +137,15 @@ moduleToKt mod = sequence
                   | (name == original) && maybe True (== moduleName mod) modName' = 
                      Call (varRefUnqual new) []
                alg a = a
-            go :: MonadSupply m => ((a, Ident), Expr Ann) -> m ([KtExpr], (KtIdent, KtIdent)) -- (decls, (normalIdent, recIdent))
+            go :: MonadSupply m => ((a, Ident), Expr Ann) -> m ((KtIdent, KtExpr), (KtIdent, KtExpr)) -- ((normalName, normalVal), (recName, recValue))
+            -- (decls, (normalIdent, recIdent))
             go ((_, ident), val) = do
                ktVal <- exprToKt val
                ktIdent <- ktIdentFromIdent ident
                let recFuncName = genRecName ktIdent
                let normalVar = modDecls $ ktVariable ktIdent $ ktCall (ktFunRef (Qualified Nothing recFuncName)) []
-               return ([ ktFun' (Just recFuncName) [] ktVal, normalVar ], (ktIdent, recFuncName))
+               return ((ktIdent, normalVar), (recFuncName, ktFun' (Just recFuncName) [] ktVal))
+               -- return ([ ktFun' (Just recFuncName) [] ktVal, normalVar ], (ktIdent, recFuncName))
             -- recursion with anything but a abs
             -- for this, the value is turned into a argumentless function and called to get the value
             -- go ((_, ident), a) = return $ pTraceShow bindings undefined
@@ -160,10 +166,17 @@ moduleToKt mod = sequence
          ktObj <- exprToKt obj
          return $ ktObjectAccess (ktCast ktObj $ varRefUnqual mapType) (ktString key)
       exprToKt (Let _ binds body) = do
-         ktBinds <- concatMapM (bindToKt identity) binds 
+         ktBinds <- mapM (bindToKt identity) binds 
+         let normalBinds = concatMap (\(normalBind, _, _) -> normalBind) ktBinds
+         let normalRefs = concatMap (\(_, normalName, _) -> normalName) ktBinds
+         let recBinds = concatMap (\(_, _, recBind) -> recBind) ktBinds
          ktBody <- exprToKt body
-         let ktObj = ktUnnamedObj [] $ ktStmt ktBinds
-         return $ ktCall (ktProperty ktObj (varRefUnqual $ MkKtIdent "run")) [ktStmt [ktBody]]--(ktStmt $ ktBinds ++ [ktBody]) [] -- TODO: limit to situations where wrapping in call is necessary
+         let ktObj = ktUnnamedObj [] $ ktStmt (normalBinds ++ recBinds)
+         return $ ktCall (ktProperty ktObj (varRefUnqual $ MkKtIdent "run")) 
+            [ ktStmt $ 
+               ((\normalRef -> ktVariable normalRef $ ktProperty (varRefUnqual $ MkKtIdent "this") (varRefUnqual normalRef)) <$> normalRefs)
+               ++ [ktBody]
+            ]--(ktStmt $ ktBinds ++ [ktBody]) [] -- TODO: limit to situations where wrapping in call is necessary
       exprToKt a = pTraceShow a undefined
       
       caseToKt :: MonadSupply m => [Expr Ann] -> CaseAlternative Ann -> m [WhenCase KtExpr]

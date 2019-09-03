@@ -46,7 +46,6 @@ extra-deps:
 - pipes-http-1.0.5
 - optparse-applicative-0.15.0.0
 - prettyprinter-1.3.0
-
 # Override default flag values for local packages and extra-deps
 # flags: {}
 

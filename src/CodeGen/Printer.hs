@@ -31,7 +31,7 @@ moduleToText mod = layoutPretty defaultLayoutOptions $ vsep $ addAnnotations $ p
    where
       addAnnotations a = "@file:Suppress(\"UNCHECKED_CAST\")" : a
 
-nest' = nest 4
+nest' = nest 2
 
 joinWith :: Doc a -> [Doc a] -> Doc a
 joinWith c = concatWith f
@@ -105,7 +105,6 @@ printExprAlg (Lambda arg (_, body)) = braces $ (<> line') $ nest' $
    " " <> printKtIdent arg <+> ": Any ->" <> line' <+> body
 printExprAlg (Fun mName args (_, body)) = 
    "fun" <+> maybe "" printKtIdent mName <> parens (commaSep $ (<+> ": Any") . printKtIdent <$> args) <> ": Any =" <+> body
-   -- printExprAlg (Property (_, a) (_, b)) = group $ nest' $ a <> line <> "."  <> b
 printExprAlg (Property (_, a) (_, b)) = align $ nest' $ a <> line' <> "."  <> b
 printExprAlg (FunRef qualIdent) = parens $ "::" <> printQualified printKtIdent qualIdent
 printExprAlg (Const lit) = printLiteral lit

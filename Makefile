@@ -1,6 +1,6 @@
 
 .PHONY: all
-all:  build test-codegen test-generatekt test run
+all:  build test-codegen test-generatekt install test run
 
 .PHONY: run
 run: test
@@ -10,28 +10,27 @@ run: test
 test:
 	kotlinc kotlin/*.kt kotlin/Foreign/*.kt -include-runtime -d kotlin/bin.jar
 	
-		# -i "test/output/Data.Unit/corefn.json"\
-		# -i "test/output/Data.Show/corefn.json"\
-		# -i "test/output/Data.Symbol/corefn.json"\
-		# -i "test/output/Type.Data.RowList/corefn.json"\
-		# -i "test/output/Type.Data.Row/corefn.json"\
-		# -i "test/output/Record.Unsafe/corefn.json"\
-		# -i "test/output/Data.Semigroup/corefn.json"\
-		# -i "test/output/Data.Semiring/corefn.json"\
-		# -i "test/output/Control.Semigroupoid/corefn.json"\
-		# -i "test/output/Data.Void/corefn.json"\
 
 test-generatekt: build
-	stack exec -- pskt --print-corefn \
+	stack exec -- pskt \
 		-i "test/output/Main/corefn.json"\
-		-o ./kotlin/
+		-o ./kotlin/\
+		-i "test/output/*/corefn.json"\
+
 
 .PHONY: test-codegen
 test-codegen: build
 	cd test && spago build -- -g corefn && cd ..
-	# purs compile --codegen corefn test/src/Main.purs test/.spago/console/v4.2.0/src/**/*.purs test/.spago/effect/v2.0.1/src/**/*.purs test/.spago/prelude/v4.1.1/src/**/*.purs test/.spago/psci-support/v4.0.0/src/**/*.purs test/src/**/*.purs test/test/**/*.purs
+
+.PHONY: test-arrays
+test-arrays: build
+	purs compile --codegen corefn "test/.spago/arrays/*/test/**.purs" "test/.spago/arrays/*/src/**.purs"
 
 
 .PHONY: build
 build:
 	stack build --fast
+
+.PHONY: install
+install:
+	stack install

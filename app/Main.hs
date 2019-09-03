@@ -47,7 +47,9 @@ import CodeGen.Printer
 import Data.Text.Prettyprint.Doc.Util (putDocW)
 import Data.Text.Prettyprint.Doc (pretty)
 import Data.Text.Prettyprint.Doc.Render.Text (renderIO)
-import System.IO (openFile, IOMode(..), hClose)
+import System.IO (openFile, IOMode(..), hClose, print)
+import Shelly (cp_r, shelly)
+import Filesystem.Path.CurrentOS (decodeString)
 
 import Options.Applicative hiding (Success)
 
@@ -66,6 +68,7 @@ jsonToModule value =
 
 data CliOptions = CliOptions
   { inputFiles :: [FilePath]
+  , foreignDirs :: [FilePath]
   , outputDir :: FilePath
   , printCoreFn :: Bool
   }
@@ -76,6 +79,13 @@ cli = CliOptions
     ( strOption 
       ( long "input"
       <> short 'i'
+      <> metavar "FILENAME"
+      )
+    )
+  <*> many
+    ( strOption
+      ( long "foreign import"
+      <> short 'f'
       <> metavar "FILENAME"
       )
     )
@@ -102,15 +112,29 @@ main :: IO ()
 main = do
   putStrLn "pskt"
   opts <- execParser optsParserInfo
+  putStrLn "parsed"
   let files = inputFiles opts
   let outputPath = outputDir opts
   putStrLn "input:"
   foundInputFiles <- G.globDir (G.compile <$> files) "./"
-  putStrLn $ show foundInputFiles
-  putStrLn $ show outputPath
-  for_ (concat foundInputFiles) $ \file -> do
-    processFile opts outputPath file
-  pure ()
+  print foundInputFiles
+  print outputPath
+  addRuntime outputPath
+  print $ foreignDirs opts
+  for_ (foreignDirs opts) $ \folder -> shelly (cp_r (decodeString folder) (decodeString outputPath))
+  for_ (concat foundInputFiles) $ \file -> processFile opts outputPath file
+
+addRuntime :: FilePath -> IO ()
+addRuntime folder = do
+  file <- openFile (folder </> "PSRuntime.kt") WriteMode
+  TIO.hPutStr file $ L.pack $ concat [
+      "package Foreign.PsRuntime;",
+      "",
+      "fun Any.app(arg: Any): Any {",
+          "return (this as (Any) -> Any)(arg)",
+      "}"
+    ]
+  hClose file
 
 processFile :: CliOptions -> FilePath -> FilePath -> IO ()
 processFile opts outputDirPath path = do
@@ -119,7 +143,7 @@ processFile opts outputDirPath path = do
   let modName = runModuleName $ moduleName mod
   if printCoreFn opts then pPrint mod else pure ()
   let moduleKt = moduleToKt' mod
-  pPrint moduleKt
+  -- pPrint moduleKt
   outputFile <- openFile (outputDirPath </> T.unpack modName <> ".kt") WriteMode
   let moduleDoc = moduleToText mod
   renderIO outputFile moduleDoc

@@ -1,19 +1,18 @@
 package Foreign.Data.Ord;
 
-fun curry5(f: (Any, Any, Any, Any, Any) -> Any) = {a: Any -> { b: Any -> { c: Any -> {d: Any -> {e: Any -> {
+fun curry5(f: (Any, Any, Any, Any, Any) -> Any) = {a: Any -> { b: Any -> { c: Any -> {d: Any -> {e: Any ->
     f(a, b, c, d, e)
-}}}}}}
+}}}}}
 
-val ordBooleanImpl = curry5 { lt, gt, eq, x, y ->
-    x as Boolean; y as Boolean
-    when {
-        x < y -> lt
-        x == y -> eq
+val ordBooleanImpl = curry5 { lt, eq, gt, x, y ->
+    when((x as Boolean).compareTo(y as Boolean)) {
+        -1 -> lt
+        0 -> eq
         else -> gt
     }
 }
 
-val ordIntImpl = curry5 { lt, gt, eq, x, y ->
+val ordIntImpl = curry5 { lt, eq, gt, x, y ->
     x as Int; y as Int
     when {
         x < y -> lt
@@ -22,16 +21,18 @@ val ordIntImpl = curry5 { lt, gt, eq, x, y ->
     }
 }
 
-val ordNumberImpl = curry5 { lt, gt, eq, x, y ->
+val ordNumberImpl = curry5 { lt, eq, gt, x, y ->
     x as Double; y as Double
+    val x1 = x.toDouble()
+    val y1 = y.toDouble()
     when {
-        x < y -> lt
-        x == y -> eq
+        x1 < y1 -> lt
+        x1 == y1 -> eq
         else -> gt
     }
 }
 
-val ordStringImpl = curry5 { lt, gt, eq, x, y ->
+val ordStringImpl = curry5 { lt, eq, gt, x, y ->
     x as String; y as String
     when {
         x < y -> lt
@@ -41,7 +42,7 @@ val ordStringImpl = curry5 { lt, gt, eq, x, y ->
 }
 
 
-val ordCharImpl = curry5 { lt, gt, eq, x, y ->
+val ordCharImpl = curry5 { lt, eq, gt, x, y ->
     x as Char; y as Char
     when {
         x < y -> lt

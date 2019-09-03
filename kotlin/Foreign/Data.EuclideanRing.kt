@@ -7,7 +7,7 @@ import kotlin.math.min
 
 val intDegree = { x: Any ->
     x as Int
-   min(abs(x), 2147483647);
+   min(abs(x.toLong()), 2147483647).toInt();
 }
 
 val intDiv = { x: Any ->
