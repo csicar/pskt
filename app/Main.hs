@@ -110,7 +110,7 @@ optsParserInfo = info (cli <**> helper)
 
 main :: IO ()
 main = do
-  putStrLn "pskt"
+  putStrLn "pskt start:"
   opts <- execParser optsParserInfo
   putStrLn "parsed"
   let files = inputFiles opts
@@ -126,15 +126,14 @@ main = do
 
 addRuntime :: FilePath -> IO ()
 addRuntime folder = do
-  file <- openFile (folder </> "PSRuntime.kt") WriteMode
-  TIO.hPutStr file $ L.pack $ concat [
+  let fileName = folder </> "PSRuntime.kt"
+  writeFile fileName $ unlines [
       "package Foreign.PsRuntime;",
       "",
-      "inline fun Any.app(arg: Any): Any {",
+      "fun Any.app(arg: Any): Any {",
           "return (this as (Any) -> Any)(arg)",
       "}"
     ]
-  hClose file
 
 processFile :: CliOptions -> FilePath -> FilePath -> IO ()
 processFile opts outputDirPath path = do
