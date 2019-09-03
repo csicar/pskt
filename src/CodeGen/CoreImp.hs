@@ -113,7 +113,7 @@ moduleToKt mod = sequence
             groupToDecl :: Bind Ann -> DataCtorDecl
             groupToDecl (NonRec _ _ (Constructor _ _ ctorName idents)) = DataCtorDecl ctorName idents
 
-      bindToKt :: MonadSupply m => (KtExpr -> KtExpr) -> Bind Ann -> m [KtExpr]
+      bindToKt :: MonadSupply m => (KtExpr -> KtExpr) -> Bind Ann -> m ([KtExpr], [KtExpr]) -- (normal, recursive)
       --TODO: split binder into (Constructor ...) and others
       bindToKt modDecls (NonRec _ ident val) = do
             ktVal <- exprToKt val
@@ -162,7 +162,8 @@ moduleToKt mod = sequence
       exprToKt (Let _ binds body) = do
          ktBinds <- concatMapM (bindToKt identity) binds 
          ktBody <- exprToKt body
-         return $ ktStmt $ ktBinds ++ [ktBody]
+         let ktObj = ktUnnamedObj [] $ ktStmt ktBinds
+         return $ ktCall (ktProperty ktObj (varRefUnqual $ MkKtIdent "run")) [ktStmt [ktBody]]--(ktStmt $ ktBinds ++ [ktBody]) [] -- TODO: limit to situations where wrapping in call is necessary
       exprToKt a = pTraceShow a undefined
       
       caseToKt :: MonadSupply m => [Expr Ann] -> CaseAlternative Ann -> m [WhenCase KtExpr]
@@ -176,14 +177,10 @@ moduleToKt mod = sequence
                pure [WhenCase (concat guards) (ktStmt $ assignments ++ [ktBody])]
             (Left guardedExpr) -> traverse genGuard guardedExpr
                where 
-                  -- TODO: guards can refer to variables from binders.
-                  -- this is currently not taken account for
                   genGuard (cond, val) = do
-                     -- ktCond contains references to values in `assignments`
-                     -- use replacements for this
                      ktCond <- ktAsBool . replaceBindersWithReferences (concat replacements) <$> exprToKt cond
                      ktVal <- exprToKt val
-                     pure $ WhenCase (ktCond : concat guards) (ktStmt $ assignments ++ [ktVal])
+                     pure $ WhenCase (concat guards ++ [ktCond]) (ktStmt $ assignments ++ [ktVal])
 
       replaceBindersWithReferences :: [Replacement] -> KtExpr -> KtExpr
       replaceBindersWithReferences replacements expr = foldr (cata . alg) expr replacements
@@ -210,7 +207,7 @@ moduleToKt mod = sequence
             specificGuard (ArrayLiteral a) = 
                ktEq (getLength compareVal) (ktInt $ fromIntegral $ length a)
             specificGuard (ObjectLiteral a) = 
-               ktEq (getLength compareVal) (ktInt $ fromIntegral $ length a)
+               ktEq (getEntryCount compareVal) (ktInt $ fromIntegral $ length a)
             specificGuard (NumericLiteral a) = ktEq compareVal $ ktConst $ NumericLiteral a
             specificGuard (StringLiteral a) = ktEq compareVal $ ktConst $ StringLiteral a
             specificGuard (CharLiteral a) = ktEq compareVal $ ktConst $ CharLiteral a

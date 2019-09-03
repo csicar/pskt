@@ -91,8 +91,8 @@ printExprAlg :: KtExprF (KtExpr, Doc ()) -> Doc ()
 printExprAlg (Package ns) = "package" <+> joinWith' "." (pretty . runProperName <$> ns)
 printExprAlg (Import ns val) = "import" <+> joinWith' "." (pretty . runProperName <$> ns) <> "." <> printKtIdent val
 printExprAlg (Stmt []) = "{}"
-printExprAlg (Stmt stmts) = braceNested $ vsep $ snd <$> stmts
-printExprAlg (ObjectDecl ident extends (_, body)) = "object" <+> printKtIdent ident <+> extendsDoc (snd <$> extends) <+> body
+printExprAlg (Stmt stmts) = braceNested $ vsep $ (<> ";")  . group . snd <$> stmts
+printExprAlg (ObjectDecl ident extends (_, body)) = "object" <+> maybe "" printKtIdent ident <+> extendsDoc (snd <$> extends) <+> body
 printExprAlg (ClassDecl mods name args extends (_, body)) =
       hsep (printKtModifier <$> mods) <+> "class" <+> printKtIdent name 
          <+> parens (commaSep $ ("val"<+>) . (<+> ": Any") . printKtIdent <$> args) <+> extendsDoc (snd <$> extends) <+> body

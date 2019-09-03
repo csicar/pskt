@@ -44,7 +44,7 @@ addElseCases = cata alg where
       (WhenCase [] b : cs) -> ElseCase b : cs
       cs -> ElseCase errorMsg : cs
       where 
-        errorMsg = ktCall (varRefUnqual $ MkKtIdent "error") [ktString "Error in Pattern Match"]
+        errorMsg = ktAsAny (ktCall (varRefUnqual $ MkKtIdent "error") [ktString "Error in Pattern Match"])
   alg a = Fix a
 
 -- `Prim.undefined` is used for arguments that are not used by the reciever (from what I can tell)

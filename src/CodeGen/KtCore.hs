@@ -78,7 +78,7 @@ data KtExprF r
   = Package [ProperName Namespace]
   | Import [ProperName Namespace] KtIdent
   | Stmt [r]
-  | ObjectDecl KtIdent [r] r
+  | ObjectDecl (Maybe KtIdent) [r] r
   -- ^ object: name; extends; body
   | ClassDecl [KtModifier] KtIdent [KtIdent] [r] r
   -- ^ class modifier; name; arguments; extends; body
@@ -156,6 +156,9 @@ qualifiedIdentToKt qualIdent = Fix . VarRef <$> qualifiedToKt ktIdentFromIdent q
 getLength :: KtExpr -> KtExpr
 getLength a = ktProperty (ktCast a (varRefUnqual $ MkKtIdent "List<Any>")) (varRefUnqual $ MkKtIdent "size")
 
+getEntryCount :: KtExpr -> KtExpr
+getEntryCount a = ktProperty (ktCast a (varRefUnqual $ MkKtIdent "Map<String, Any>")) (varRefUnqual $ MkKtIdent "size")
+
 ktInt :: Integer -> KtExpr
 ktInt = ktConst . NumericLiteral . Left
 
@@ -167,6 +170,9 @@ ktJvmValue = ktAnnotated (varRefUnqual $ MkKtIdent "JvmField")
 
 ktAsBool :: KtExpr -> KtExpr
 ktAsBool a = ktCast a (varRefUnqual $ MkKtIdent "Boolean")
+
+ktAsAny :: KtExpr -> KtExpr
+ktAsAny a = ktCast a (varRefUnqual $ MkKtIdent "Any")
 
 ktConst = Fix . Const
 
@@ -188,7 +194,9 @@ ktArrayAccess a b = Fix $ ArrayAccess a b
 ktObjectAccess a b = Fix $ ObjectAccess a b
 
 ktLambda a b = Fix $ Lambda a b
-ktObjectDecl a b c = Fix $ ObjectDecl a b c
+ktObjectDecl a b c = Fix $ ObjectDecl (Just a) b c
+
+ktUnnamedObj b c = Fix $ ObjectDecl Nothing b c
 
 ktClassDecl a b c d e = Fix $ ClassDecl a b c d e
 
