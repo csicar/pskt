@@ -130,7 +130,7 @@ addRuntime folder = do
   TIO.hPutStr file $ L.pack $ concat [
       "package Foreign.PsRuntime;",
       "",
-      "fun Any.app(arg: Any): Any {",
+      "inline fun Any.app(arg: Any): Any {",
           "return (this as (Any) -> Any)(arg)",
       "}"
     ]
