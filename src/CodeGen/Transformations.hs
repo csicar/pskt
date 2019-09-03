@@ -31,11 +31,23 @@ import CodeGen.KtCore
 import Data.Functor.Foldable
 import Data.Maybe  (fromJust)
 import qualified Language.PureScript.Constants as C
+import CodeGen.MagicDo
 
 normalize :: KtExpr -> KtExpr
-normalize = addElseCases
+normalize = identity
+  . addElseCases
   . primUndefToUnit
+  -- . convertToApply
+  . inline
+  . magicDoEffect
 
+convertToApply :: KtExpr -> KtExpr
+convertToApply = cata alg where
+  alg (Call a [b]) =  ktCall (ktProperty a (varRefUnqual $ MkKtIdent "app")) [b]
+  alg a = Fix a
+
+-- If a when case does not cover all cases, an else branch is needed
+-- since Kotlin can sometimes not infer, that all cases are covered, this adds a default case
 addElseCases :: KtExpr -> KtExpr
 addElseCases = cata alg where
   alg :: KtExprF KtExpr -> KtExpr
@@ -45,6 +57,28 @@ addElseCases = cata alg where
       cs -> ElseCase errorMsg : cs
       where 
         errorMsg = ktAsAny (ktCall (varRefUnqual $ MkKtIdent "error") [ktString "Error in Pattern Match"])
+  alg a = Fix a
+
+-- <mod>.<f>.app(<mod>.<cls>).app(<a>).app(<b>)
+pattern CallOn2 mod cls mod' f a b = 
+  (CallApp
+    (Fix (CallApp
+      (Fix (CallApp
+        (Fix (VarRef (Qualified (Just mod') f)))
+        (Fix (VarRef (Qualified (Just mod) cls)))
+      ))
+      a
+    ))
+    b
+  )
+
+inline :: KtExpr -> KtExpr
+inline = cata alg where
+  alg :: KtExprF KtExpr -> KtExpr
+  alg (CallOn2 Semigroup (MkKtIdent "semigroupString") Semigroup (MkKtIdent "append") a b)
+    = ktAdd (ktAsString a) (ktAsString b)
+  alg (CallOn2 Semigroup (MkKtIdent "semigroupArray") Semigroup (MkKtIdent "append") a b)
+    = ktAdd (ktAsList a) (ktAsList b)
   alg a = Fix a
 
 -- `Prim.undefined` is used for arguments that are not used by the reciever (from what I can tell)

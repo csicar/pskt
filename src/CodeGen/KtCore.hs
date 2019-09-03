@@ -42,6 +42,7 @@ data BinOp
   | IsType
   | And
   | To -- for Pairs: `1 to "Hi"`
+  | Add
   deriving (Show)
 
 newtype KtIdent = MkKtIdent Text deriving (Show, Eq)
@@ -154,7 +155,7 @@ qualifiedIdentToKt :: MonadSupply m => Qualified Ident -> m KtExpr
 qualifiedIdentToKt qualIdent = Fix . VarRef <$> qualifiedToKt ktIdentFromIdent qualIdent
 
 getLength :: KtExpr -> KtExpr
-getLength a = ktProperty (ktCast a (varRefUnqual $ MkKtIdent "List<Any>")) (varRefUnqual $ MkKtIdent "size")
+getLength a = ktProperty (ktAsList a) (varRefUnqual $ MkKtIdent "size")
 
 getEntryCount :: KtExpr -> KtExpr
 getEntryCount a = ktProperty (ktCast a (varRefUnqual $ MkKtIdent "Map<String, Any>")) (varRefUnqual $ MkKtIdent "size")
@@ -174,11 +175,18 @@ ktAsBool a = ktCast a (varRefUnqual $ MkKtIdent "Boolean")
 ktAsAny :: KtExpr -> KtExpr
 ktAsAny a = ktCast a (varRefUnqual $ MkKtIdent "Any")
 
+ktAsString :: KtExpr -> KtExpr
+ktAsString a = ktCast a (varRefUnqual $ MkKtIdent "String")
+
+ktAsList :: KtExpr -> KtExpr
+ktAsList a = ktCast a (varRefUnqual $ MkKtIdent "List<Any>")
+
 ktConst = Fix . Const
 
 ktEq a b = Fix $ Binary Equals a b
 ktIsType a b = Fix $ Binary IsType a b
 ktPair a b = Fix $ Binary To a b
+ktAdd a b = Fix $ Binary Add a b
 
 ktProperty a b = Fix $ Property a b
 
@@ -215,3 +223,7 @@ ktFunRef = Fix . FunRef
 ktCast a b = Fix $ Cast a b
 
 ktAnnotated a b = Fix $ Annotated a b
+
+
+-- <a>.app(<b>)
+pattern CallApp a b = (Call (Fix (Property a (Fix (VarRef (Qualified Nothing (MkKtIdent "app")))))) [b])

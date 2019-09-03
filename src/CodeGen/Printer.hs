@@ -119,6 +119,7 @@ printOp Equals = "=="
 printOp IsType = "is"
 printOp And = "&&"
 printOp To = "to"
+printOp Add = "+"
 
 printWhenCases (WhenCase conds body) = group (joinWith "&&" (ensureOneElement conds) <+> "->") <+> body
    where 

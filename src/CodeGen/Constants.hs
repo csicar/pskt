@@ -22,6 +22,13 @@ moduleNamespace = ProperName "Module"
 
 pattern PrimModule = ModuleName [ProperName "PS", ProperName "Prim", ProperName "Module"]
 
+pattern Semigroup = ModuleName [ProperName "PS", ProperName "Data", ProperName "Semigroup", ProperName "Module"]
+
+pattern Applicative = ModuleName [ProperName "PS", ProperName "Control", ProperName "Applicative", ProperName "Module"]
+
+pattern Effect = ModuleName [ProperName "PS", ProperName "Effect", ProperName "Module"]
+pattern Bind = ModuleName [ProperName "PS", ProperName "Control", ProperName "Bind", ProperName "Module"]
+
 isReserved :: Text -> Bool
 isReserved = (`elem` allReserved)
 
