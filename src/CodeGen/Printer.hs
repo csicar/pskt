@@ -60,10 +60,16 @@ printQualified :: (a -> Doc()) -> Qualified a -> Doc ()
 printQualified p (Qualified Nothing a) = p a
 printQualified p (Qualified (Just mod) a) = pretty (runModuleName mod) <> "." <> p a
 
+printString :: PSString -> Text
+printString = T.concatMap go . prettyPrintStringJS
+      where 
+         go '$' = "${'$'}"
+         go c = T.singleton c
+
 printLiteral :: Literal (KtExpr, Doc ()) -> Doc ()
 printLiteral (NumericLiteral (Left a))= pretty (show a)
 printLiteral (NumericLiteral (Right a))= pretty (show a)
-printLiteral (StringLiteral a) = pretty (show a)
+printLiteral (StringLiteral a) = pretty (printString a)
 printLiteral (CharLiteral a) = pretty (show a)
 printLiteral (BooleanLiteral a) = if a then "true" else "false"
 printLiteral (ArrayLiteral []) = printExprAlg (Call (emptyList, printExpr emptyList) [])
