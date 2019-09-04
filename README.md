@@ -28,7 +28,7 @@ $ cd purescript
 $ spago init
 $ spago build -- -g corefn
 # build kotlin files
-$ pskt -i $(spago sources) -o ../src/main/kotlin/output/ -f ../src/main/kotlin/kotlin-foreigns
+$ pskt -o ../src/main/kotlin/output/ -f ../src/main/kotlin/kotlin-foreigns
 ```
 
 Implementation
