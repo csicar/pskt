@@ -75,21 +75,15 @@ data CliOptions = CliOptions
 
 cli :: Parser CliOptions
 cli = CliOptions
-  <$> many 
-    ( strOption 
-      ( long "input"
-      <> short 'i'
-      <> metavar "FILENAME"
-      )
-    )
+  <$> many (argument str (metavar "files"))
   <*> many
-    ( strOption
-      ( long "foreign import"
+    ( option str
+      ( long "foreign"
       <> short 'f'
       <> metavar "FILENAME"
       )
     )
-  <*> strOption
+  <*> option str
     ( long "outputDir"
     <> short 'o'
     <> metavar "FILENAME"
@@ -113,7 +107,9 @@ main = do
   putStrLn "pskt start:"
   opts <- execParser optsParserInfo
   putStrLn "parsed"
-  let files = inputFiles opts
+  let files = case inputFiles opts of
+        [] -> ["output/*/corefn.json"]
+        a -> a
   let outputPath = outputDir opts
   putStrLn "input:"
   foundInputFiles <- G.globDir (G.compile <$> files) "./"
