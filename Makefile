@@ -1,4 +1,11 @@
+.PHONY: build
+build:
+	stack build --fast
 
+.PHONY: install
+install:
+	stack install
+	
 .PHONY: all
 all:  build test-codegen test-generatekt install test run
 
@@ -28,10 +35,3 @@ test-arrays: build
 	purs compile --codegen corefn "test/.spago/arrays/*/test/**.purs" "test/.spago/arrays/*/src/**.purs"
 
 
-.PHONY: build
-build:
-	stack build --fast
-
-.PHONY: install
-install:
-	stack install
