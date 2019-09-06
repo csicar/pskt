@@ -12,10 +12,11 @@ test:
 	
 
 test-generatekt: build
-	stack exec -- pskt \
-		-i "test/output/Main/corefn.json"\
+	stack exec -- pskt\
+		test/output/*/corefn.json\
 		-o ./kotlin/\
-		-i "test/output/*/corefn.json"\
+
+		# -i "test/output/*/corefn.json"\
 
 
 .PHONY: test-codegen

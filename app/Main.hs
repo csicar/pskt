@@ -23,8 +23,8 @@ import System.FilePath.Glob as G
 import qualified Data.Text.Lazy.IO as TIO
 
 import System.Environment
-import System.Directory (createDirectoryIfMissing, doesDirectoryExist, doesFileExist, getCurrentDirectory, getModificationTime)
-import System.FilePath ((</>), joinPath, searchPathSeparator, splitDirectories, takeDirectory)
+import System.Directory (copyFile, createDirectoryIfMissing, doesDirectoryExist, doesFileExist, getCurrentDirectory, getModificationTime)
+import System.FilePath ((</>), takeFileName, joinPath, searchPathSeparator, splitDirectories, takeDirectory)
 import System.Process
 
 import Data.Text (Text)
@@ -75,12 +75,18 @@ data CliOptions = CliOptions
 
 cli :: Parser CliOptions
 cli = CliOptions
-  <$> many (argument str (metavar "files"))
+  <$> many 
+    ( argument str 
+      ( metavar "files"
+      <> help "glob of corefn files to transpile. Default is ./output/*/corefn.json"
+      )
+    )
   <*> many
     ( option str
       ( long "foreign"
       <> short 'f'
       <> metavar "FILENAME"
+      <> help "glob containing the foreign files. PsKt will copy them to the output directory. Example: \"../pskt-foreigns/*/.kt\""
       )
     )
   <*> option str
@@ -88,6 +94,7 @@ cli = CliOptions
     <> short 'o'
     <> metavar "FILENAME"
     <> value "kotlin/"
+    <> help "folder to write transpiled files to"
     )
   <*> switch
     ( long "print-corefn"
@@ -114,10 +121,15 @@ main = do
   putStrLn "input:"
   foundInputFiles <- G.globDir (G.compile <$> files) "./"
   print foundInputFiles
+  putStrLn "outputPath:"
   print outputPath
   addRuntime outputPath
-  print $ foreignDirs opts
-  for_ (foreignDirs opts) $ \folder -> shelly (cp_r (decodeString folder) (decodeString outputPath))
+  foundForeignFiles <- G.globDir (G.compile <$> foreignDirs opts) "./"
+  putStrLn "foreignFiles:"
+  print foundForeignFiles
+  let foreignOutput = outputPath </> "foreigns"
+  createDirectoryIfMissing True foreignOutput
+  for_ (concat foundForeignFiles) $ \ktFile -> copyFile ktFile (foreignOutput </> takeFileName ktFile)
   for_ (concat foundInputFiles) $ \file -> processFile opts outputPath file
 
 addRuntime :: FilePath -> IO ()
