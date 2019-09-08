@@ -97,7 +97,7 @@ printExprAlg :: KtExprF (KtExpr, Doc ()) -> Doc ()
 printExprAlg (PackageF ns) = "package" <+> joinWith' "." (pretty . runProperName <$> ns)
 printExprAlg (ImportF ns val) = "import" <+> joinWith' "." (pretty . runProperName <$> ns) <> "." <> printKtIdent val
 printExprAlg (StmtF []) = "{}"
-printExprAlg (StmtF stmts) = braceNested $ vsep $ (<> ";")  . group . snd <$> stmts
+printExprAlg (StmtF stmts) = braceNested $ vsep $ (<> flatAlt "" ";")  . group . snd <$> stmts
 printExprAlg (ObjectDeclF ident extends (_, body)) = "object" <+> maybe "" printKtIdent ident <+> extendsDoc (snd <$> extends) <+> body
 printExprAlg (ClassDeclF mods name args extends (_, body)) =
       hsep (printKtModifier <$> mods) <+> "class" <+> printKtIdent name 
@@ -106,7 +106,7 @@ printExprAlg (VarRefF qualIdent) = printQualified printKtIdent qualIdent
 printExprAlg (CallF (_, a) args) = group $ nest' (a <> "(" <> commaSep ((softline' <>) . snd <$> args)) <> softline' <> ")"
 printExprAlg (VariableIntroductionF ident (_, a)) = "val" <+> printKtIdent ident <+> "=" <+> a
 printExprAlg (LambdaF arg (Stmt stmts, body)) = braces $ nest' $ 
-   " " <> printKtIdent arg <+> ": Any ->" <> line' <> nest' (vsep (printExpr <$> stmts))
+   " " <> printKtIdent arg <+> ": Any ->" <> line' <> nest' (vsep $ (<> flatAlt "" ";") . group . printExpr <$> stmts)
 printExprAlg (LambdaF arg (_, body)) = braces $ (<> line') $ nest' $
    " " <> printKtIdent arg <+> ": Any ->" <> line' <+> body
 printExprAlg (FunF mName args (_, body)) = 
