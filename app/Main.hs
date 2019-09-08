@@ -134,6 +134,7 @@ main = do
 
 addRuntime :: FilePath -> IO ()
 addRuntime folder = do
+  createDirectoryIfMissing True folder
   let fileName = folder </> "PSRuntime.kt"
   writeFile fileName $ unlines [
       "package Foreign.PsRuntime;",
