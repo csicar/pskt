@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell, TypeFamilies, DeriveTraversable, StandaloneDeriving #-}
 module CodeGen.KtCore where
 
 import Prelude hiding (print)
@@ -25,17 +25,19 @@ import Text.Pretty.Simple (pShow)
 import Language.PureScript.AST.SourcePos (displayStartEndPos)
 import CodeGen.Constants
 import Data.Functor.Foldable
-import Text.Show.Deriving (deriveShow1)
+import Data.Functor.Foldable.TH
+import Text.Show.Deriving (deriveShow, deriveShow1)
 import Control.Arrow ((>>>))
 
 data WhenCase a
   -- Conditions, return value
   = WhenCase [a] a
-  | ElseCase a deriving (Show, Functor)
+  | ElseCase a deriving (Show, Functor, Foldable, Traversable)
 
 $(deriveShow1 ''WhenCase)
 $(deriveShow1 ''Literal)
 
+deriving instance Traversable Literal
 
 data BinOp
   = Equals
@@ -75,34 +77,33 @@ data KtModifier
   | Data
   deriving (Show)
 
-data KtExprF r
+data KtExpr
   = Package [ProperName Namespace]
   | Import [ProperName Namespace] KtIdent
-  | Stmt [r]
-  | ObjectDecl (Maybe KtIdent) [r] r
+  | Stmt [KtExpr]
+  | ObjectDecl (Maybe KtIdent) [KtExpr] KtExpr
   -- ^ object: name; extends; body
-  | ClassDecl [KtModifier] KtIdent [KtIdent] [r] r
+  | ClassDecl [KtModifier] KtIdent [KtIdent] [KtExpr] KtExpr
   -- ^ class modifier; name; arguments; extends; body
-  | If r r (Maybe r)
-  | WhenExpr [WhenCase r]
-  | VariableIntroduction KtIdent r
-  | Binary BinOp r r
-  | Property r r
-  | ArrayAccess r r
-  | ObjectAccess r r
+  | If KtExpr KtExpr (Maybe KtExpr)
+  | WhenExpr [WhenCase KtExpr]
+  | VariableIntroduction KtIdent KtExpr
+  | Binary BinOp KtExpr KtExpr
+  | Property KtExpr KtExpr
+  | ArrayAccess KtExpr KtExpr
+  | ObjectAccess KtExpr KtExpr
   | VarRef (Qualified KtIdent)
-  | Cast r r
-  | Fun (Maybe KtIdent) [KtIdent] r
+  | Cast KtExpr KtExpr
+  | Fun (Maybe KtIdent) [KtIdent] KtExpr
   | FunRef (Qualified KtIdent)
-  | Lambda KtIdent r
-  | Call r [r]
-  | Const (Literal r)
-  | Annotated r r
-  deriving (Show, Functor)
+  | Lambda KtIdent KtExpr
+  | Call KtExpr [KtExpr]
+  | Const (Literal KtExpr)
+  | Annotated KtExpr KtExpr
+  deriving (Show)
 
-$(deriveShow1 ''KtExprF)
-
-type KtExpr = Fix KtExprF
+makeBaseFunctor ''KtExpr
+deriveShow ''KtExprF
 
 mapType :: KtIdent
 mapType = MkKtIdent "Map<String, Any>"
@@ -142,7 +143,7 @@ identFromTypeName (ProperName txt) = return $ MkKtIdent $ ("_Type_"<>) $ unreser
 ktIdentFromIdent :: MonadSupply m => Ident -> m KtIdent
 ktIdentFromIdent ident = return $ MkKtIdent $ unreserve $ runIdent ident
 
-varRefUnqual = Fix . VarRef . Qualified Nothing
+varRefUnqual = VarRef . Qualified Nothing
 
 qualifiedToKt :: MonadSupply m => (a -> m b) -> Qualified a -> m (Qualified b)
 qualifiedToKt f (Qualified mModName a) = do
@@ -152,78 +153,37 @@ qualifiedToKt f (Qualified mModName a) = do
       go (ModuleName ls) = ModuleName $ psNamespace : ls ++ [moduleNamespace]
 
 qualifiedIdentToKt :: MonadSupply m => Qualified Ident -> m KtExpr
-qualifiedIdentToKt qualIdent = Fix . VarRef <$> qualifiedToKt ktIdentFromIdent qualIdent
+qualifiedIdentToKt qualIdent = VarRef <$> qualifiedToKt ktIdentFromIdent qualIdent
 
 getLength :: KtExpr -> KtExpr
-getLength a = ktProperty (ktAsList a) (varRefUnqual $ MkKtIdent "size")
+getLength a = Property (ktAsList a) (varRefUnqual $ MkKtIdent "size")
 
 getEntryCount :: KtExpr -> KtExpr
-getEntryCount a = ktProperty (ktCast a (varRefUnqual $ MkKtIdent "Map<String, Any>")) (varRefUnqual $ MkKtIdent "size")
+getEntryCount a = Property (Cast a (varRefUnqual $ MkKtIdent "Map<String, Any>")) (varRefUnqual $ MkKtIdent "size")
 
 ktInt :: Integer -> KtExpr
-ktInt = ktConst . NumericLiteral . Left
+ktInt = Const . NumericLiteral . Left
 
 ktString :: PSString -> KtExpr
-ktString = ktConst . StringLiteral
+ktString = Const . StringLiteral
 
 ktJvmValue :: KtExpr -> KtExpr
-ktJvmValue = ktAnnotated (varRefUnqual $ MkKtIdent "JvmField")
+ktJvmValue = Annotated (varRefUnqual $ MkKtIdent "JvmField")
 
 ktAsBool :: KtExpr -> KtExpr
-ktAsBool a = ktCast a (varRefUnqual $ MkKtIdent "Boolean")
+ktAsBool a = Cast a (varRefUnqual $ MkKtIdent "Boolean")
 
 ktAsAny :: KtExpr -> KtExpr
-ktAsAny a = ktCast a (varRefUnqual $ MkKtIdent "Any")
+ktAsAny a = Cast a (varRefUnqual $ MkKtIdent "Any")
 
 ktAsString :: KtExpr -> KtExpr
-ktAsString a = ktCast a (varRefUnqual $ MkKtIdent "String")
+ktAsString a = Cast a (varRefUnqual $ MkKtIdent "String")
 
 ktAsList :: KtExpr -> KtExpr
-ktAsList a = ktCast a (varRefUnqual $ MkKtIdent "List<Any>")
+ktAsList a = Cast a (varRefUnqual $ MkKtIdent "List<Any>")
 
-ktConst = Fix . Const
-
-ktEq a b = Fix $ Binary Equals a b
-ktIsType a b = Fix $ Binary IsType a b
-ktPair a b = Fix $ Binary To a b
-ktAdd a b = Fix $ Binary Add a b
-
-ktProperty a b = Fix $ Property a b
-
-ktVariable a b = Fix $ VariableIntroduction a b
-
-ktVarRef = Fix . VarRef
-
-ktCall a b = Fix $ Call a b
-
-ktStmt = Fix . Stmt 
-
-ktArrayAccess a b = Fix $ ArrayAccess a b 
-ktObjectAccess a b = Fix $ ObjectAccess a b
-
-ktLambda a b = Fix $ Lambda a b
-ktObjectDecl a b c = Fix $ ObjectDecl (Just a) b c
-
-ktUnnamedObj b c = Fix $ ObjectDecl Nothing b c
-
-ktClassDecl a b c d e = Fix $ ClassDecl a b c d e
-
-ktWhenExpr = Fix . WhenExpr
-
-ktPackage = Fix . Package
-
-ktImport a b = Fix $ Import a b
-
-ktFun' a b c = Fix $ Fun a b c
-
-ktFun a b = ktFun' a [b]
-
-ktFunRef = Fix . FunRef
-
-ktCast a b = Fix $ Cast a b
-
-ktAnnotated a b = Fix $ Annotated a b
-
+ktFun a b = Fun a [b]
 
 -- <a>.app(<b>)
-pattern CallApp a b = (Call (Fix (Property a (Fix (VarRef (Qualified Nothing (MkKtIdent "app")))))) [b])
+pattern CallAppF a b = (CallF (Property a (VarRef (Qualified Nothing (MkKtIdent "app")))) [b])
+pattern CallApp a b = (Call (Property a (VarRef (Qualified Nothing (MkKtIdent "app")))) [b])
