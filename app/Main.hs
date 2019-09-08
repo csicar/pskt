@@ -71,6 +71,7 @@ data CliOptions = CliOptions
   , foreignDirs :: [FilePath]
   , outputDir :: FilePath
   , printCoreFn :: Bool
+  , printTranspiled :: Bool
   }
 
 cli :: Parser CliOptions
@@ -99,6 +100,10 @@ cli = CliOptions
   <*> switch
     ( long "print-corefn"
     <> help "print debug info about read corefn"
+    )
+  <*> switch
+    ( long "print-transpiled"
+    <> help "print debug info about transpiled files"
     )
 
 -- Adding program help text to the parser
@@ -153,7 +158,8 @@ processFile opts outputDirPath path = do
   let moduleKt = moduleToKt' mod
   -- pPrint moduleKt
   outputFile <- openFile (outputDirPath </> T.unpack modName <> ".kt") WriteMode
+  putStrLn $ "Transpiling " <> T.unpack modName
   let moduleDoc = moduleToText mod
   renderIO outputFile moduleDoc
   hClose outputFile
-  TIO.putStrLn $ renderLazy moduleDoc
+  if printTranspiled opts then TIO.putStrLn $ renderLazy moduleDoc else pure ()
