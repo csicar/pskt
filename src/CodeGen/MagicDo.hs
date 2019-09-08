@@ -54,6 +54,26 @@ magicDoEffect = cata alg where
   alg :: KtExprF KtExpr -> KtExpr
   -- PS.Control.Applicative.Module.pure
   --              .app(PS.Effect.Module.applicativeEffect)
-  --              .app(a); ==> a
+  --              .app(<a>);
+  -- ==> <a>
   alg (CallAppF (CallApp (QualRef Applicative "pure") (QualRef Effect "applicativeEffect")) a) = a
-  alg other = pTraceShowId $ embed other
+  -- PS.Control.Bind.Module.discard
+  --              .app(PS.Control.Bind.Module.discardUnit)
+  --              .app(PS.Effect.Module.bindEffect)
+  --              .app(<val>)
+  --              .app({ _ : Any -> <body> })
+  -- ==> <val>; <body>
+  alg (CallAppF (CallApp 
+    (CallApp 
+      (CallApp (QualRef Bind "discard") (QualRef Bind "discardUnit")) 
+      (QualRef Effect "bindEffect")
+    ) val) (Lambda (MkKtIdent "_") body)) = Stmt [val, body]
+  -- PS.Control.Bind.Module.bind
+  --   .app(PS.Effect.Module.bindEffect)
+  --   .app(<val>)
+  --   .app({ <arg> : Any -> <body> })
+  -- ==> val <arg> = <val>; <body>
+  alg (CallAppF (CallApp (CallApp (QualRef Bind "bind") (QualRef Effect "bindEffect")) val) (Lambda arg body)) = 
+    Stmt [ VariableIntroduction arg val, body]
+  
+  alg other = embed other

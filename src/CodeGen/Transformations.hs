@@ -35,15 +35,27 @@ import qualified Language.PureScript.Constants as C
 
 normalize :: KtExpr -> KtExpr
 normalize = identity
-  . addElseCases
+  . removeDoubleStmt
   . primUndefToUnit
+  . removeUnnecessaryWhen
+  . addElseCases
+  . removeDoubleStmt
   . magicDoEffect
-  -- . convertToApply
   . inline
 
-convertToApply :: KtExpr -> KtExpr
-convertToApply = cata alg where
-  alg (CallF a [b]) =  Call (Property a (varRefUnqual $ MkKtIdent "app")) [b]
+removeDoubleStmt :: KtExpr -> KtExpr
+removeDoubleStmt = cata alg where
+  alg :: KtExprF KtExpr -> KtExpr
+  alg (StmtF ls) = Stmt $ concatMap extract ls
+  alg a = embed a
+
+  extract (Stmt ls) = ls
+  extract a = [a]
+
+removeUnnecessaryWhen :: KtExpr -> KtExpr
+removeUnnecessaryWhen = cata alg where
+  alg :: KtExprF KtExpr -> KtExpr
+  alg (WhenExprF [ElseCase a]) = a
   alg a = embed a
 
 -- If a when case does not cover all cases, an else branch is needed
