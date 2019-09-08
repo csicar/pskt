@@ -31,7 +31,6 @@ import CodeGen.KtCore
 import Data.Functor.Foldable
 import Data.Maybe  (fromJust)
 import qualified Language.PureScript.Constants as C
-import CodeGen.MagicDo
 
 normalize :: KtExpr -> KtExpr
 normalize = identity
@@ -39,7 +38,6 @@ normalize = identity
   . primUndefToUnit
   -- . convertToApply
   . inline
-  . magicDoEffect
 
 convertToApply :: KtExpr -> KtExpr
 convertToApply = cata alg where
