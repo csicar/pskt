@@ -1,7 +1,7 @@
 PsKt
 ====
 
-Kotlin-Backend for PureScript
+Kotlin-Backend for PureScript. PsKt is forked from [purescript-native](https://github.com/andyarvanitis/purescript-native)
 
 Why
 ---

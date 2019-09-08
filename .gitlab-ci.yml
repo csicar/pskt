@@ -1,0 +1,11 @@
+image: haskell:8.6.5 
+
+build:
+        stage: build
+        script:
+                - stack setup 
+                - make
+                - make install
+        artifacts:
+                paths:
+                - /root/.local/bin/pskt
