@@ -28,6 +28,7 @@ import Debug.Pretty.Simple (pTraceShowId, pTraceShow)
 import Language.PureScript.AST.SourcePos (displayStartEndPos)
 import CodeGen.Constants
 import CodeGen.KtCore
+import CodeGen.MagicDo
 import Data.Functor.Foldable
 import Data.Maybe  (fromJust)
 import qualified Language.PureScript.Constants as C
@@ -36,6 +37,7 @@ normalize :: KtExpr -> KtExpr
 normalize = identity
   . addElseCases
   . primUndefToUnit
+  . magicDoEffect
   -- . convertToApply
   . inline
 
