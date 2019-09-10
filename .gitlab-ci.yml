@@ -8,4 +8,4 @@ build:
                 - make install
         artifacts:
                 paths:
-                - /root/.local/bin/pskt
+                - /root/.local/bin/
