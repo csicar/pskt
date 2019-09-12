@@ -29,6 +29,7 @@ source-repository head
 library
   exposed-modules:
       CodeGen.Constants
+      CodeGen.MagicDo
       CodeGen.CoreImp
       CodeGen.Transformations
       CodeGen.KtCore

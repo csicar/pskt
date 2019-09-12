@@ -29,6 +29,8 @@ pattern Applicative = ModuleName [ProperName "PS", ProperName "Control", ProperN
 pattern Effect = ModuleName [ProperName "PS", ProperName "Effect", ProperName "Module"]
 pattern Bind = ModuleName [ProperName "PS", ProperName "Control", ProperName "Bind", ProperName "Module"]
 
+pattern STInternal = ModuleName [ProperName "PS", ProperName "Control", ProperName "Monad", ProperName "ST", ProperName "Internal", ProperName "Module" ]
+
 isReserved :: Text -> Bool
 isReserved = (`elem` allReserved)
 

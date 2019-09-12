@@ -32,7 +32,7 @@ import Control.Arrow ((>>>))
 data WhenCase a
   -- Conditions, return value
   = WhenCase [a] a
-  | ElseCase a deriving (Show, Functor, Foldable, Traversable)
+  | ElseCase a deriving (Show, Functor, Foldable, Traversable, Eq)
 
 $(deriveShow1 ''WhenCase)
 $(deriveShow1 ''Literal)
@@ -45,7 +45,7 @@ data BinOp
   | And
   | To -- for Pairs: `1 to "Hi"`
   | Add
-  deriving (Show)
+  deriving (Show, Eq)
 
 newtype KtIdent = MkKtIdent Text deriving (Show, Eq)
 runKtIdent (MkKtIdent a) = a
@@ -75,7 +75,7 @@ instance Foldable Literal where
 data KtModifier
   = Sealed
   | Data
-  deriving (Show)
+  deriving (Show, Eq)
 
 data KtExpr
   = Package [ProperName Namespace]
@@ -86,6 +86,7 @@ data KtExpr
   | ClassDecl [KtModifier] KtIdent [KtIdent] [KtExpr] KtExpr
   -- ^ class modifier; name; arguments; extends; body
   | If KtExpr KtExpr (Maybe KtExpr)
+  | While KtExpr KtExpr
   | WhenExpr [WhenCase KtExpr]
   | VariableIntroduction KtIdent KtExpr
   | Binary BinOp KtExpr KtExpr
@@ -97,10 +98,11 @@ data KtExpr
   | Fun (Maybe KtIdent) [KtIdent] KtExpr
   | FunRef (Qualified KtIdent)
   | Lambda KtIdent KtExpr
+  | Defer KtExpr -- Lambda without arguments; in Kotlin: { <body> }
   | Call KtExpr [KtExpr]
   | Const (Literal KtExpr)
   | Annotated KtExpr KtExpr
-  deriving (Show)
+  deriving (Show, Eq)
 
 makeBaseFunctor ''KtExpr
 deriveShow ''KtExprF
@@ -170,8 +172,7 @@ ktString = Const . StringLiteral
 ktJvmValue :: KtExpr -> KtExpr
 ktJvmValue = Annotated (varRefUnqual $ MkKtIdent "JvmField")
 
-ktAsBool :: KtExpr -> KtExpr
-ktAsBool a = Cast a (varRefUnqual $ MkKtIdent "Boolean")
+pattern KtAsBool a = Cast a (VarRef (Qualified Nothing (MkKtIdent "Boolean")))
 
 ktAsAny :: KtExpr -> KtExpr
 ktAsAny a = Cast a (varRefUnqual $ MkKtIdent "Any")
@@ -187,3 +188,11 @@ ktFun a b = Fun a [b]
 -- <a>.app(<b>)
 pattern CallAppF a b = (CallF (Property a (VarRef (Qualified Nothing (MkKtIdent "app")))) [b])
 pattern CallApp a b = (Call (Property a (VarRef (Qualified Nothing (MkKtIdent "app")))) [b])
+
+-- <a>.appRun()
+pattern RunF a = (CallF (Property a (VarRef (Qualified Nothing (MkKtIdent "appRun")))) [])
+pattern Run a = (Call (Property a (VarRef (Qualified Nothing (MkKtIdent "appRun")))) [])
+
+pattern Unit = VarRef (Qualified Nothing (MkKtIdent "Unit"))
+
+pattern Not a = Property (KtAsBool a) (Call (VarRef (Qualified Nothing (MkKtIdent "not"))) [])

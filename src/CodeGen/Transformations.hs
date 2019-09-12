@@ -28,21 +28,58 @@ import Debug.Pretty.Simple (pTraceShowId, pTraceShow)
 import Language.PureScript.AST.SourcePos (displayStartEndPos)
 import CodeGen.Constants
 import CodeGen.KtCore
+import CodeGen.MagicDo
 import Data.Functor.Foldable
 import Data.Maybe  (fromJust)
 import qualified Language.PureScript.Constants as C
 
 normalize :: KtExpr -> KtExpr
 normalize = identity
+  . removeDoubleStmt
+  . inlineDeferApp
+  -- poor man's fixpoint
+  . untilFixpoint magicDoEffect
+  . untilFixpoint magicDoST
+  . removeDoubleStmt
+  . removeUnnecessaryWhen
   . addElseCases
   . primUndefToUnit
-  -- . convertToApply
   . inline
 
-convertToApply :: KtExpr -> KtExpr
-convertToApply = cata alg where
-  alg (CallF a [b]) =  Call (Property a (varRefUnqual $ MkKtIdent "app")) [b]
+untilFixpoint :: Eq a => (a -> a) -> a -> a
+untilFixpoint f a | f a == a = a
+untilFixpoint f a = untilFixpoint f (f a)
+
+removeDoubleStmt :: KtExpr -> KtExpr
+removeDoubleStmt = cata alg where
+  alg :: KtExprF KtExpr -> KtExpr
+  alg (StmtF ls) = Stmt $ concatMap extract ls
   alg a = embed a
+
+  extract (Stmt ls) = ls
+  extract a = [a]
+
+removeUnnecessaryWhen :: KtExpr -> KtExpr
+removeUnnecessaryWhen = cata alg where
+  alg :: KtExprF KtExpr -> KtExpr
+  alg (WhenExprF [ElseCase a]) = a
+  alg a = embed a
+
+-- {<stmt>; /*defer */{<body>}.appRun()} -> {<stmt>; <body>}
+inlineDeferApp :: KtExpr -> KtExpr
+inlineDeferApp = cata alg where
+  alg :: KtExprF KtExpr -> KtExpr
+  alg (StmtF sts) = Stmt $ go <$> sts
+    where
+      go (Run (Defer a)) = a
+      go (Run (Stmt body)) = inlineDeferApp $ Stmt $ mapLast Run body
+      go a = a
+  alg a = embed a
+
+mapLast :: (a -> a) -> [a] -> [a]
+mapLast f ls = reverse $ case reverse ls of
+  [] -> []
+  (end: rest) -> f end : rest
 
 -- If a when case does not cover all cases, an else branch is needed
 -- since Kotlin can sometimes not infer, that all cases are covered, this adds a default case
@@ -83,5 +120,5 @@ inline = cata alg where
 -- we'll give `Prim.undefined` the value Unit
 primUndefToUnit :: KtExpr -> KtExpr
 primUndefToUnit = cata alg where
-  alg (VarRefF (Qualified (Just PrimModule) (MkKtIdent ident))) | ident == C.undefined = VarRef $ Qualified Nothing (MkKtIdent "Unit")
+  alg (VarRefF (Qualified (Just PrimModule) (MkKtIdent ident))) | ident == C.undefined = Unit
   alg a = embed a
