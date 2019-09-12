@@ -47,6 +47,10 @@ data BinOp
   | Add
   deriving (Show)
 
+data UnaryOp
+  = Not 
+  deriving (Show)
+
 newtype KtIdent = MkKtIdent Text deriving (Show, Eq)
 runKtIdent (MkKtIdent a) = a
 
@@ -86,9 +90,11 @@ data KtExpr
   | ClassDecl [KtModifier] KtIdent [KtIdent] [KtExpr] KtExpr
   -- ^ class modifier; name; arguments; extends; body
   | If KtExpr KtExpr (Maybe KtExpr)
+  | While KtExpr KtExpr
   | WhenExpr [WhenCase KtExpr]
   | VariableIntroduction KtIdent KtExpr
   | Binary BinOp KtExpr KtExpr
+  | Unary UnaryOp KtExpr
   | Property KtExpr KtExpr
   | ArrayAccess KtExpr KtExpr
   | ObjectAccess KtExpr KtExpr
@@ -189,5 +195,8 @@ ktFun a b = Fun a [b]
 pattern CallAppF a b = (CallF (Property a (VarRef (Qualified Nothing (MkKtIdent "app")))) [b])
 pattern CallApp a b = (Call (Property a (VarRef (Qualified Nothing (MkKtIdent "app")))) [b])
 
+-- <a>.appRun()
 pattern RunF a = (CallF (Property a (VarRef (Qualified Nothing (MkKtIdent "appRun")))) [])
 pattern Run a = (Call (Property a (VarRef (Qualified Nothing (MkKtIdent "appRun")))) [])
+
+pattern Unit = VarRef (Qualified Nothing (MkKtIdent "Unit"))

@@ -149,5 +149,5 @@ inline = cata alg where
 -- we'll give `Prim.undefined` the value Unit
 primUndefToUnit :: KtExpr -> KtExpr
 primUndefToUnit = cata alg where
-  alg (VarRefF (Qualified (Just PrimModule) (MkKtIdent ident))) | ident == C.undefined = VarRef $ Qualified Nothing (MkKtIdent "Unit")
+  alg (VarRefF (Qualified (Just PrimModule) (MkKtIdent ident))) | ident == C.undefined = Unit
   alg a = embed a

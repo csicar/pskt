@@ -53,12 +53,15 @@ rename f = cata alg where
 magicDoEffect :: KtExpr -> KtExpr
 magicDoEffect = cata alg where
   alg :: KtExprF KtExpr -> KtExpr
+
+  -- Desugar pure
   -- PS.Control.Applicative.Module.pure
   --              .app(PS.Effect.Module.applicativeEffect)
   --              .app(<a>).appRun();
   -- ==> <a>
   alg (RunF (CallApp (CallApp (QualRef Applicative "pure") (QualRef Effect "applicativeEffect")) a)) = a
   
+  -- Desugar discard
   -- PS.Control.Bind.Module.discard
   --              .app(PS.Control.Bind.Module.discardUnit)
   --              .app(PS.Effect.Module.bindEffect)
@@ -74,6 +77,7 @@ magicDoEffect = cata alg where
     ) (Lambda (MkKtIdent "_") body)) =
        Defer $ Stmt [Run val, Run  body]
 
+  -- Desugar bind
   -- PS.Control.Bind.Module.bind
   --   .app(PS.Effect.Module.bindEffect)
   --   .app(<val>)
@@ -84,6 +88,14 @@ magicDoEffect = cata alg where
       val
     ) (Lambda arg body)) = 
        Defer $ Stmt [VariableIntroduction arg (Run val), Run body]
+  
+  -- Desugar untilE
+  alg (RunF (CallApp (QualRef Effect "untilE") cond)) =
+    Stmt [While (Unary Not (Run cond)) (Stmt []), Unit]
+
+  alg (RunF (CallApp (CallApp (QualRef Effect "whileE") cond) body)) =
+    Stmt [While (Run cond) (Stmt [Run body]), Unit]
+  
   alg other = embed other
 
 mkDefer (Defer a) = Defer a
