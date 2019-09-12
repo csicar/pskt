@@ -42,14 +42,6 @@ rename f = cata alg where
   alg (VarRefF (Qualified nm (MkKtIdent name))) = VarRef (Qualified nm (MkKtIdent $ f name))
   alg a = embed a
 
--- val main = PS.Control.Bind.Module.discard
---                .app(PS.Control.Bind.Module.discardUnit)
---                .app(PS.Effect.Module.bindEffect)
---                .app(PS.Effect.Console.Module.log.app("asd"))
---                .app({ _ : Any ->
---        PS.Effect.Console.Module.log.app("kkk")
---     })
-
 magicDoEffect :: KtExpr -> KtExpr
 magicDoEffect = cata alg where
   alg :: KtExprF KtExpr -> KtExpr
@@ -91,7 +83,7 @@ magicDoEffect = cata alg where
   
   -- Desugar untilE
   alg (RunF (CallApp (QualRef Effect "untilE") cond)) =
-    Stmt [While (Unary Not (Run cond)) (Stmt []), Unit]
+    Stmt [While (Not (Run cond)) (Stmt []), Unit]
 
   -- Desugar whileE
   alg (RunF (CallApp (CallApp (QualRef Effect "whileE") cond) body)) =
@@ -99,5 +91,37 @@ magicDoEffect = cata alg where
   
   alg other = embed other
 
-mkDefer (Defer a) = Defer a
-mkDefer a = Defer a
+
+magicDoST :: KtExpr -> KtExpr
+magicDoST = cata alg where
+  alg :: KtExprF KtExpr -> KtExpr
+
+  -- Desugar pure
+  alg (RunF (CallApp (CallApp (QualRef Applicative "pure") (QualRef STInternal "applicativeST")) a)) = a
+  
+  -- Desugar discard
+  alg (CallAppF (CallApp 
+    (CallApp 
+      (CallApp (QualRef Bind "discard") (QualRef Bind "discardUnit")) 
+      (QualRef STInternal "bindST")
+    ) 
+    val
+    ) (Lambda (MkKtIdent "_") body)) =
+       Defer $ Stmt [Run val, Run  body]
+
+  -- Desugar bind
+  alg (CallAppF (CallApp 
+      (CallApp (QualRef Bind "bind") (QualRef STInternal "bindST"))
+      val
+    ) (Lambda arg body)) = 
+       Defer $ Stmt [VariableIntroduction arg (Run val), Run body]
+  
+  -- Desugar untilE
+  alg (RunF (CallApp (QualRef STInternal "until") cond)) =
+    Stmt [While (Not (Run cond)) (Stmt []), Unit]
+
+  -- Desugar whileE
+  alg (RunF (CallApp (CallApp (QualRef STInternal "while") cond) body)) =
+    Stmt [While (Run cond) (Stmt [Run body]), Unit]
+  
+  alg other = embed other

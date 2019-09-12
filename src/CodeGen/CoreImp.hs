@@ -192,7 +192,7 @@ moduleToKt mod = sequence
             (Left guardedExpr) -> traverse genGuard guardedExpr
                where 
                   genGuard (cond, val) = do
-                     ktCond <- ktAsBool . replaceBindersWithReferences (concat replacements) <$> exprToKt cond
+                     ktCond <- KtAsBool . replaceBindersWithReferences (concat replacements) <$> exprToKt cond
                      ktVal <- exprToKt val
                      pure $ WhenCase (concat guards ++ [ktCond]) (Stmt $ assignments ++ [ktVal])
 

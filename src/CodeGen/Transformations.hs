@@ -39,6 +39,7 @@ normalize = identity
   . inlineDeferApp
   -- poor man's fixpoint
   . untilFixpoint magicDoEffect
+  . untilFixpoint magicDoST
   . removeDoubleStmt
   . removeUnnecessaryWhen
   . addElseCases

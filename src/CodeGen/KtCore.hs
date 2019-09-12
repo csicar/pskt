@@ -47,10 +47,6 @@ data BinOp
   | Add
   deriving (Show, Eq)
 
-data UnaryOp
-  = Not 
-  deriving (Show, Eq)
-
 newtype KtIdent = MkKtIdent Text deriving (Show, Eq)
 runKtIdent (MkKtIdent a) = a
 
@@ -94,7 +90,6 @@ data KtExpr
   | WhenExpr [WhenCase KtExpr]
   | VariableIntroduction KtIdent KtExpr
   | Binary BinOp KtExpr KtExpr
-  | Unary UnaryOp KtExpr
   | Property KtExpr KtExpr
   | ArrayAccess KtExpr KtExpr
   | ObjectAccess KtExpr KtExpr
@@ -177,8 +172,7 @@ ktString = Const . StringLiteral
 ktJvmValue :: KtExpr -> KtExpr
 ktJvmValue = Annotated (varRefUnqual $ MkKtIdent "JvmField")
 
-ktAsBool :: KtExpr -> KtExpr
-ktAsBool a = Cast a (varRefUnqual $ MkKtIdent "Boolean")
+pattern KtAsBool a = Cast a (VarRef (Qualified Nothing (MkKtIdent "Boolean")))
 
 ktAsAny :: KtExpr -> KtExpr
 ktAsAny a = Cast a (varRefUnqual $ MkKtIdent "Any")
@@ -200,3 +194,5 @@ pattern RunF a = (CallF (Property a (VarRef (Qualified Nothing (MkKtIdent "appRu
 pattern Run a = (Call (Property a (VarRef (Qualified Nothing (MkKtIdent "appRun")))) [])
 
 pattern Unit = VarRef (Qualified Nothing (MkKtIdent "Unit"))
+
+pattern Not a = Property (KtAsBool a) (Call (VarRef (Qualified Nothing (MkKtIdent "not"))) [])
