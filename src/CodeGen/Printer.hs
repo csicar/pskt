@@ -109,7 +109,7 @@ printExprAlg (LambdaF arg (Stmt stmts, body)) = braces $ nest' $
    " " <> printKtIdent arg <+> ": Any ->" <> line' <> nest' (vsep $ (<> flatAlt ";" ";") . group . printExpr <$> stmts)
 printExprAlg (LambdaF arg (_, body)) = braces $ (<> line') $ nest' $
    " " <> printKtIdent arg <+> ": Any ->" <> line' <+> body
-printExprAlg (DeferF (Stmt _, body)) = "/* defer stmt*/" <> body
+printExprAlg (DeferF (Stmt _, body)) = "/* defer **/" <> body
 printExprAlg (DeferF (_, body)) = ("/* defer */" <>) $ braces $ nest' body
 printExprAlg (FunF mName args (_, body)) = 
    "fun" <+> maybe "" printKtIdent mName <> parens (commaSep $ (<+> ": Any") . printKtIdent <$> args) <> ": Any =" <+> body
