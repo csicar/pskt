@@ -32,7 +32,7 @@ import Control.Arrow ((>>>))
 data WhenCase a
   -- Conditions, return value
   = WhenCase [a] a
-  | ElseCase a deriving (Show, Functor, Foldable, Traversable)
+  | ElseCase a deriving (Show, Functor, Foldable, Traversable, Eq)
 
 $(deriveShow1 ''WhenCase)
 $(deriveShow1 ''Literal)
@@ -45,11 +45,11 @@ data BinOp
   | And
   | To -- for Pairs: `1 to "Hi"`
   | Add
-  deriving (Show)
+  deriving (Show, Eq)
 
 data UnaryOp
   = Not 
-  deriving (Show)
+  deriving (Show, Eq)
 
 newtype KtIdent = MkKtIdent Text deriving (Show, Eq)
 runKtIdent (MkKtIdent a) = a
@@ -79,7 +79,7 @@ instance Foldable Literal where
 data KtModifier
   = Sealed
   | Data
-  deriving (Show)
+  deriving (Show, Eq)
 
 data KtExpr
   = Package [ProperName Namespace]
@@ -107,7 +107,7 @@ data KtExpr
   | Call KtExpr [KtExpr]
   | Const (Literal KtExpr)
   | Annotated KtExpr KtExpr
-  deriving (Show)
+  deriving (Show, Eq)
 
 makeBaseFunctor ''KtExpr
 deriveShow ''KtExprF

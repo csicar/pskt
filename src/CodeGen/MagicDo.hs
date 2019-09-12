@@ -93,6 +93,7 @@ magicDoEffect = cata alg where
   alg (RunF (CallApp (QualRef Effect "untilE") cond)) =
     Stmt [While (Unary Not (Run cond)) (Stmt []), Unit]
 
+  -- Desugar whileE
   alg (RunF (CallApp (CallApp (QualRef Effect "whileE") cond) body)) =
     Stmt [While (Run cond) (Stmt [Run body]), Unit]
   

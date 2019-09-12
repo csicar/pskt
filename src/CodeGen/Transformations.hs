@@ -38,46 +38,16 @@ normalize = identity
   . removeDoubleStmt
   . inlineDeferApp
   -- poor man's fixpoint
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
-  . magicDoEffect
+  . untilFixpoint magicDoEffect
   . removeDoubleStmt
   . removeUnnecessaryWhen
   . addElseCases
   . primUndefToUnit
   . inline
+
+untilFixpoint :: Eq a => (a -> a) -> a -> a
+untilFixpoint f a | f a == a = a
+untilFixpoint f a = untilFixpoint f (f a)
 
 removeDoubleStmt :: KtExpr -> KtExpr
 removeDoubleStmt = cata alg where
