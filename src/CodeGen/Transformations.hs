@@ -36,9 +36,6 @@ import qualified Language.PureScript.Constants as C
 normalize :: KtExpr -> KtExpr
 normalize = identity
   . removeDoubleStmt
-  . primUndefToUnit
-  . addElseCases
-  . removeDoubleStmt
   . inlineDeferApp
   -- poor man's fixpoint
   . magicDoEffect
@@ -79,6 +76,7 @@ normalize = identity
   . removeDoubleStmt
   . removeUnnecessaryWhen
   . addElseCases
+  . primUndefToUnit
   . inline
 
 removeDoubleStmt :: KtExpr -> KtExpr

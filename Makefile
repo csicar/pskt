@@ -7,7 +7,7 @@ install:
 	stack install
 	
 .PHONY: all
-all:  build test-codegen test-generatekt install test run
+all:  build test-codegen test-generatekt install 
 
 .PHONY: run
 run: test
@@ -15,12 +15,13 @@ run: test
 
 .PHONY: test
 test:
-	kotlinc kotlin/*.kt kotlin/Foreign/*.kt -include-runtime -d kotlin/bin.jar
+	kotlinc kotlin/*.kt kotlin/foreigns/*.kt -include-runtime -d kotlin/bin.jar
 	
 
 test-generatekt: build
 	stack exec -- pskt\
-		test/output/*/corefn.json\
+		test/output/Main/corefn.json\
+		-f "../foreigns/*.kt"\
 		-o ./kotlin/\
 
 		# -i "test/output/*/corefn.json"\
