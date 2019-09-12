@@ -56,6 +56,7 @@ moduleToKt :: MonadSupply m => Module Ann -> m [KtExpr]
 moduleToKt mod = sequence
    [ pure $ packageDecl (moduleName mod)
    , pure $ Import [ProperName "Foreign", ProperName "PsRuntime"] (MkKtIdent "app")
+   , pure $ Import [ProperName "Foreign", ProperName "PsRuntime"] (MkKtIdent "appRun")
    , normalize <$> moduleToObject mod
    ]
    where

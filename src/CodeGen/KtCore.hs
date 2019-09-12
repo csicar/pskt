@@ -97,6 +97,7 @@ data KtExpr
   | Fun (Maybe KtIdent) [KtIdent] KtExpr
   | FunRef (Qualified KtIdent)
   | Lambda KtIdent KtExpr
+  | Defer KtExpr -- Lambda without arguments; in Kotlin: { <body> }
   | Call KtExpr [KtExpr]
   | Const (Literal KtExpr)
   | Annotated KtExpr KtExpr
@@ -187,3 +188,6 @@ ktFun a b = Fun a [b]
 -- <a>.app(<b>)
 pattern CallAppF a b = (CallF (Property a (VarRef (Qualified Nothing (MkKtIdent "app")))) [b])
 pattern CallApp a b = (Call (Property a (VarRef (Qualified Nothing (MkKtIdent "app")))) [b])
+
+pattern RunF a = (CallF (Property a (VarRef (Qualified Nothing (MkKtIdent "appRun")))) [])
+pattern Run a = (Call (Property a (VarRef (Qualified Nothing (MkKtIdent "appRun")))) [])

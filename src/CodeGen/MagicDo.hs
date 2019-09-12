@@ -32,48 +32,59 @@ import Data.Functor.Foldable
 import Data.Maybe  (fromJust)
 import qualified Language.PureScript.Constants as C
 
+pattern QualRef a b = VarRef (Qualified (Just a) (MkKtIdent b))
+
+topDown ::(KtExpr -> KtExpr) -> KtExpr -> KtExpr
+topDown f xs = embed $ topDown f <$> project (f xs)
+
+rename :: (Text -> Text) -> KtExpr -> KtExpr
+rename f = cata alg where
+  alg (VarRefF (Qualified nm (MkKtIdent name))) = VarRef (Qualified nm (MkKtIdent $ f name))
+  alg a = embed a
+
 -- val main = PS.Control.Bind.Module.discard
 --                .app(PS.Control.Bind.Module.discardUnit)
 --                .app(PS.Effect.Module.bindEffect)
 --                .app(PS.Effect.Console.Module.log.app("asd"))
 --                .app({ _ : Any ->
---        PS.Control.Bind.Module.discard.app(PS.Control.Bind.Module.discardUnit)
---          .app(PS.Effect.Module.bindEffect)
---          .app(PS.Effect.Console.Module.log.app("kkk"))
---          .app({ _ : Any ->
---            1
---         })
---     });
--- log.app("asd")
--- log.app("kkk")
-
-pattern QualRef a b = VarRef (Qualified (Just a) (MkKtIdent b))
+--        PS.Effect.Console.Module.log.app("kkk")
+--     })
 
 magicDoEffect :: KtExpr -> KtExpr
 magicDoEffect = cata alg where
   alg :: KtExprF KtExpr -> KtExpr
   -- PS.Control.Applicative.Module.pure
   --              .app(PS.Effect.Module.applicativeEffect)
-  --              .app(<a>);
+  --              .app(<a>).appRun();
   -- ==> <a>
-  alg (CallAppF (CallApp (QualRef Applicative "pure") (QualRef Effect "applicativeEffect")) a) = a
+  alg (RunF (CallApp (CallApp (QualRef Applicative "pure") (QualRef Effect "applicativeEffect")) a)) = a
+  
   -- PS.Control.Bind.Module.discard
   --              .app(PS.Control.Bind.Module.discardUnit)
   --              .app(PS.Effect.Module.bindEffect)
   --              .app(<val>)
   --              .app({ _ : Any -> <body> })
-  -- ==> <val>; <body>
+  -- ==> { <val>.appRun(); <body>.appRun() }
   alg (CallAppF (CallApp 
     (CallApp 
       (CallApp (QualRef Bind "discard") (QualRef Bind "discardUnit")) 
       (QualRef Effect "bindEffect")
-    ) val) (Lambda (MkKtIdent "_") body)) = Stmt [val, body]
+    ) 
+    val
+    ) (Lambda (MkKtIdent "_") body)) =
+       Defer $ Stmt [Run val, Run  body]
+
   -- PS.Control.Bind.Module.bind
   --   .app(PS.Effect.Module.bindEffect)
   --   .app(<val>)
   --   .app({ <arg> : Any -> <body> })
-  -- ==> val <arg> = <val>; <body>
-  alg (CallAppF (CallApp (CallApp (QualRef Bind "bind") (QualRef Effect "bindEffect")) val) (Lambda arg body)) = 
-    Stmt [ VariableIntroduction arg val, body]
-  
+  -- ==> { val <arg> = <val>.appRun(); <body>.appRun() }
+  alg (CallAppF (CallApp 
+      (CallApp (QualRef Bind "bind") (QualRef Effect "bindEffect"))
+      val
+    ) (Lambda arg body)) = 
+       Defer $ Stmt [VariableIntroduction arg (Run val), Run body]
   alg other = embed other
+
+mkDefer (Defer a) = Defer a
+mkDefer a = Defer a

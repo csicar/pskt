@@ -37,10 +37,48 @@ normalize :: KtExpr -> KtExpr
 normalize = identity
   . removeDoubleStmt
   . primUndefToUnit
-  . removeUnnecessaryWhen
   . addElseCases
   . removeDoubleStmt
+  . inlineDeferApp
+  -- poor man's fixpoint
   . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . magicDoEffect
+  . removeDoubleStmt
+  . removeUnnecessaryWhen
+  . addElseCases
   . inline
 
 removeDoubleStmt :: KtExpr -> KtExpr
@@ -57,6 +95,22 @@ removeUnnecessaryWhen = cata alg where
   alg :: KtExprF KtExpr -> KtExpr
   alg (WhenExprF [ElseCase a]) = a
   alg a = embed a
+
+-- {<stmt>; /*defer */{<body>}.appRun()} -> {<stmt>; <body>}
+inlineDeferApp :: KtExpr -> KtExpr
+inlineDeferApp = cata alg where
+  alg :: KtExprF KtExpr -> KtExpr
+  alg (StmtF sts) = Stmt $ go <$> sts
+    where
+      go (Run (Defer a)) = a
+      go (Run (Stmt body)) = inlineDeferApp $ Stmt $ mapLast Run body
+      go a = a
+  alg a = embed a
+
+mapLast :: (a -> a) -> [a] -> [a]
+mapLast f ls = reverse $ case reverse ls of
+  [] -> []
+  (end: rest) -> f end : rest
 
 -- If a when case does not cover all cases, an else branch is needed
 -- since Kotlin can sometimes not infer, that all cases are covered, this adds a default case
