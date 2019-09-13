@@ -50,3 +50,5 @@ WORKDIR /root
 RUN git clone https://gitlab.com/csicar/pskt/ pskt-cache
 WORKDIR /root/pskt-cache
 RUN make 
+
+RUN su build -c 'yay -S --needed --noprogressbar --needed --noconfirm gradle'

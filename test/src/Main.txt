@@ -21,3 +21,5 @@ testLocalBinds:
 368
 test magicDo
 4
+test ST
+338350

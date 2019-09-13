@@ -13,6 +13,8 @@ import Data.Foldable
 import Effect
 import Data.Array (uncons)
 import Data.Maybe
+import Control.Monad.ST as ST
+import Control.Monad.ST.Ref as STRef
 
 composeTest x = (_ + 1) >>> (_ * 8983)
 
@@ -49,6 +51,16 @@ testLocalBinds = f a
 magicDoPure :: Effect Int
 magicDoPure = pure 4
 
+-- ST test
+stTest :: Int
+stTest = ST.run do
+  total <- STRef.new 0
+  let loop 0 = STRef.read total
+      loop n = do
+        _ <- STRef.modify (_ + (n * n)) total
+        loop (n - 1)
+  loop 100
+
 main = do
   log "test unicode:"
   log "start 😁 😂 🤣 😃 😄 😅 end $ ' \""
@@ -74,4 +86,6 @@ main = do
   log "test magicDo"
   val <- magicDoPure
   logShow val
+  log "test ST"
+  logShow stTest
   pure 1

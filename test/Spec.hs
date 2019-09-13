@@ -11,16 +11,13 @@ system' cmd = do
   code <- system cmd
   case code of
     ExitSuccess -> return ()
-    ExitFailure a -> fail $ "Command failed with: " ++ show a
+    _ -> exitWith code
 
 withDefaultPath cmd = 
   system' $ "bash -c 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; export PATH; "<> cmd <>"'"
 
-tests = TestCase $ do
+tests = do
   withDefaultPath "whereis purs"
-  system' "echo version:"
-  system' "purs --version"
-  system' "echo $PATH"
   withCurrentDirectory "./test" $ withDefaultPath "spago build -- --codegen corefn"
   compile $ CliOptions
     { inputFiles = ["test/output/*/corefn.json"]
@@ -32,13 +29,11 @@ tests = TestCase $ do
   putStrLn "compiled"
   expectedOutput <- readFile "./test/src/Main.txt"
   withCurrentDirectory "./kotlin" $ do
-    system' "./gradlew fatJar"
+    system' "JAVA_HOME=/usr/lib/jvm/default gradle fatJar"
     stdout <- readProcess "java" ["-jar", "build/libs/test-1.0-SNAPSHOT-fat.jar"] ""
     putStrLn stdout
     assertEqual "output should match" expectedOutput stdout
   
 
 main :: IO ()
-main = do
-  runTestTT tests
-  return ()
+main = tests
