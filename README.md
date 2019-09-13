@@ -3,6 +3,8 @@ PsKt
 
 Kotlin-Backend for PureScript. PsKt is forked from [purescript-native](https://github.com/andyarvanitis/purescript-native)
 
+[![pipeline status](https://gitlab.com/csicar/pskt/badges/kotlin/pipeline.svg)](https://gitlab.com/csicar/pskt/commits/kotlin)
+
 Why
 ---
 
@@ -10,6 +12,8 @@ The goal of this project is to support native android development in PureScript 
 
 Installation
 ------------
+
+The Linux executable can be downloaded [here](https://gitlab.com/csicar/pskt/-/jobs/artifacts/kotlin/raw/pskt?job=build)
 
 ```bash
 $ git clone ....
