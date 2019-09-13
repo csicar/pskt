@@ -7,9 +7,10 @@ build:
       - make install
       - pwd
       - ls /root/.local/bin
+      - cp /root/.local/bin/purs .
    artifacts:
       paths:
-      - /root/.local/
+      - purs
 
 test:
    stage: test
