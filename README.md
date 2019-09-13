@@ -39,7 +39,8 @@ $ pskt -o ../src/main/kotlin/output/ -f "../pskt-foreigns/*.kt"
 
 ### Troubleshooting
 
-When compiling with `kotlinc` you might get some weird errors like `OutOfMemory` exceptions. For some reason compiling in Intellij or Android Studio will solve that problem.
+When compiling with `kotlinc` you might get some weird errors like `OutOfMemory` exceptions. 
+This can be fixed by using a gradle build script. See [kotlin test](https://github.com/csicar/pskt/tree/kotlin/kotlin/build.gradle) for an example. 
 
 Implementation
 --------------
@@ -77,6 +78,15 @@ Function calls are sugared with `.app(...)` to make the generated code more read
 - All transpiled Purescript modules will be located in the `PS.` package in Kotlin (eg. `Data.Array` in PS will be `PS.Data.Array` in Kt)
 - Definitions in a module in Purescript will be located in the `Module` object (eg. `Data.Array.range` in PS will be `PS.Data.Array.Module.range` in Kt)
 - Foreign definitions are located in the `Foreign.` package in Kotlin, followed by the same Namespace that is used in Purescript (eg. the foreign definition `arrayMapImpl` in the module `Data.Array` should be located in `Foreign.Data.Array` in Kotlin)
+
+### Bootstrapping
+
+To run a purescript program `main :: Effect Unit`:
+```kotlin
+fun main() {
+  PS.MyModule.main() // or use .appRun() if the type is Any
+}
+```
 
 
 FFI
@@ -117,4 +127,4 @@ ToDos
 - [ ] TCO
 - [ ] expand inlining
 - [ ] Android library
-- [ ] Aff reuse message queue? https://developer.android.com/reference/android/os/MessageQueue
+- [ ] Aff - reuse message queue? https://developer.android.com/reference/android/os/MessageQueue

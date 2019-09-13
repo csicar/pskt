@@ -21,4 +21,8 @@ examples/docs/docs/
 core-tests/full-core-docs.md
 .psc-ide-port
 .vscode/
-kotlin/
+kotlin/src/main/kotlin/generated
+kotlin/build
+.idea/
+kotlin/gradle
+kotlin/.gradle
