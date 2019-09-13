@@ -7,10 +7,10 @@ build:
       - make install
       - pwd
       - ls /root/.local/bin
-      - cp /root/.local/bin/purs .
+      - cp /root/.local/bin/pskt .
    artifacts:
       paths:
-      - purs
+      - pskt
 
 test:
    stage: test

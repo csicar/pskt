@@ -44,9 +44,9 @@ RUN su build -c 'yay -S --needed --noprogressbar --needed --noconfirm purescript
 
 RUN su build -c 'yay -S --needed --noprogressbar --needed --noconfirm stack'
 
-RUN su build -c 'stack setup'
-
-# RUN pacman --noconfirm -S git sudo
-# RUN useradd -m -G wheel -s /bin/bash build
-# RUN su build -c "cd; git clone https://aur.archlinux.org/yay.git; cd yay; makepkg --noconfirm -si"
-# RUN yay --answerclean n --answerdiff n --answeredit n --answerupgrade n -S stack gradle nodejs-spago purescript-bin
+# populate caches to speed up compilation
+RUN stack setup
+WORKDIR /root
+RUN git clone https://gitlab.com/csicar/pskt/ pskt-cache
+WORKDIR /root/pskt-cache
+RUN make 
