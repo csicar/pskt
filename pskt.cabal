@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8e26bf02938a8ed7a12184be3c98ea1fcf1d3dfc8c549a4304462f946cb5ef09
+-- hash: fbad8cf35077b2c96c441058f5cfcb75fa465e5cca40e7c03c186f1dd7227337
 
 name:           pskt
 version:        0.1.0.0
@@ -28,12 +28,13 @@ source-repository head
 
 library
   exposed-modules:
+      CLI
       CodeGen.Constants
-      CodeGen.MagicDo
       CodeGen.CoreImp
-      CodeGen.Transformations
       CodeGen.KtCore
+      CodeGen.MagicDo
       CodeGen.Printer
+      CodeGen.Transformations
   other-modules:
       Paths_pskt
   hs-source-dirs:
@@ -46,6 +47,7 @@ library
     , base-compat >=0.6.0
     , bytestring >=0.10.8.2 && <0.11
     , containers
+    , deriving-compat
     , directory
     , file-embed
     , filepath
@@ -58,9 +60,8 @@ library
     , prettyprinter >=1.3.0
     , process
     , protolude >=0.1.6
-    , recursion-schemes
-    , deriving-compat
     , purescript
+    , recursion-schemes
     , safe >=0.3.9 && <0.4
     , text
     , transformers >=0.3.0 && <0.6
@@ -80,6 +81,7 @@ executable pskt
     , base-compat >=0.6.0
     , bytestring >=0.10.8.2 && <0.11
     , containers
+    , deriving-compat
     , directory
     , file-embed
     , filepath
@@ -93,9 +95,8 @@ executable pskt
     , process
     , protolude >=0.1.6
     , pskt
-    , shelly
-    , system-filepath
     , purescript
+    , recursion-schemes
     , safe >=0.3.9 && <0.4
     , text
     , transformers >=0.3.0 && <0.6
@@ -111,11 +112,13 @@ test-suite pskt-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       Glob >=0.7.0
+    , HUnit
     , aeson >=1.0 && <1.5
     , base >=4.7 && <5
     , base-compat >=0.6.0
     , bytestring >=0.10.8.2 && <0.11
     , containers
+    , deriving-compat
     , directory
     , file-embed
     , filepath
@@ -130,6 +133,7 @@ test-suite pskt-test
     , protolude >=0.1.6
     , pskt
     , purescript
+    , recursion-schemes
     , safe >=0.3.9 && <0.4
     , text
     , transformers >=0.3.0 && <0.6

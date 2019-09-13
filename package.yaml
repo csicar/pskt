@@ -10,8 +10,6 @@ extra-source-files:
 - README.md
 - ChangeLog.md
 - stack.yaml
-- runtime/*
-- support/*
 
 # Metadata used when publishing your package
 # synopsis:            Short description of your package
@@ -45,6 +43,8 @@ dependencies:
 - process -any
 - file-embed -any
 - gitrev -any
+- recursion-schemes
+- deriving-compat
 
 library:
   source-dirs: src
@@ -89,3 +89,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - pskt
+    - HUnit

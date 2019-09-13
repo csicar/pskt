@@ -8,16 +8,20 @@ module Main where
 -- import Data.Function (const)
 -- g x | true = 1+2
 import Prelude
-import Effect.Console (log)
+import Effect.Console (log, logShow)
 
--- main x = (_ + 1) >>> (_ * 8983)
+composeTest x = (_ + 1) >>> (_ * 8983)
 
--- f = [12, 2,3] <>[2]
+f = [12, 2,3] <>[2]
 
--- fib 0 = 1
--- fib n = n* fib n
+fac 0 = 1
+fac n = n* fac (n - 1)
 
 main = do
   log "asd"
   log "😘kkk"
+  logShow $ fac 10
+  logShow f
+  log "composeTest:"
+  logShow $ composeTest 2 2
   pure 1

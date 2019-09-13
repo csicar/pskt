@@ -1,11 +1,15 @@
-image: haskell:8.6.5 
+image: csicar/pskt
 
 build:
         stage: build
         script:
-                - stack setup 
                 - make
                 - make install
         artifacts:
                 paths:
                 - /root/.local/bin/
+test:
+        stage: test
+        script:
+                - make test
+        
