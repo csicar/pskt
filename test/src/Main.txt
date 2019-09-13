@@ -1,6 +1,23 @@
-asd
-😘kkk
+test unicode:
+start 😁 😂 🤣 😃 😄 😅 end $ ' "
+test recursion:
 3628800
 [12,2,3,2]
 composeTest:
 26949
+test cases:
+1
+99
+1337
+0
+thrd allll
+first usll
+snd 3283
+mutual recursion:
+25
+test local recursion
+8
+testLocalBinds:
+368
+test magicDo
+4

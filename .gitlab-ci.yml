@@ -7,11 +7,9 @@ build:
                 - make install
                 - pwd
                 - ls /root/.local/bin
-                - ls /builds/csicar/pskt/.stack-work/install/x86_64-linux/lts-13.12/8.6.4/bin/
         artifacts:
                 paths:
-                - /root/.local/bin/
-                - /builds/csicar/pskt/.stack-work/install/x86_64-linux/lts-13.12/8.6.4/bin/
+                - /root/.local/bin
 test:
         stage: test
         script:

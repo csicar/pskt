@@ -119,6 +119,7 @@ printExprAlg (ConstF lit) = printLiteral lit
 printExprAlg (WhenExprF cases) = "when" <+> braceNested (vsep $ printWhenCases . fmap snd <$> cases)
 printExprAlg (BinaryF op (_, a) (_, b)) = parens $ a <+> printOp op <+> b
 printExprAlg (ObjectAccessF (_, obj) (_, key)) = obj <> brackets key <> "!!"
+printExprAlg (ArrayAccessF (_, arr) (_, index)) = arr <> brackets index
 printExprAlg (CastF (_, a) (_, b)) = parens $ a <+> "as" <+> b
 printExprAlg (AnnotatedF (_, ann) (_, expr)) = "@" <> ann <> line <> expr
 printExprAlg (WhileF (_, cond) (_, body)) = "while" <+> parens cond <+> body

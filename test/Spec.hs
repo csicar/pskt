@@ -5,12 +5,18 @@ import CodeGen.CoreImp
 import CLI
 import System.Process
 import System.Directory
+import System.Exit
 
+system' cmd = do
+  code <- system cmd
+  case code of
+    ExitSuccess -> return ()
+    ExitFailure a -> fail $ "Command failed with: " ++ show a
 
 tests = TestCase $ do
-  system "whereis purs"
+  system' "whereis purs"
   withCurrentDirectory "./test" $ 
-    system "spago build -- --codegen corefn"
+    system' "spago build -- --codegen corefn"
   compile $ CliOptions
     { inputFiles = ["test/output/*/corefn.json"]
     , foreignDirs = ["../foreigns/*.kt"]
@@ -21,7 +27,7 @@ tests = TestCase $ do
   putStrLn "compiled"
   expectedOutput <- readFile "./test/src/Main.txt"
   withCurrentDirectory "./kotlin" $ do
-    system "./gradlew fatJar"
+    system' "./gradlew fatJar"
     stdout <- readProcess "java" ["-jar", "build/libs/test-1.0-SNAPSHOT-fat.jar"] ""
     putStrLn stdout
     assertEqual "output should match" expectedOutput stdout

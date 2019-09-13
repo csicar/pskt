@@ -15,6 +15,10 @@ run: test
 
 .PHONY: test
 test:
+	stack test
+
+.PHONY: test-compile
+test-compile:
 	kotlinc kotlin/*.kt kotlin/foreigns/*.kt -include-runtime -d kotlin/bin.jar
 	
 
