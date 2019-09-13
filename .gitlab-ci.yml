@@ -9,7 +9,7 @@ build:
       - ls /root/.local/bin
    artifacts:
       paths:
-      - /root/.local/bin
+      - /root/.local/
 
 test:
    stage: test

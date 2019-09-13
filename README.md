@@ -108,3 +108,13 @@ Android
 -------
 
 An example for android can be found [here](https://github.com/csicar/pskt-android-example).
+
+
+ToDos
+-----
+
+- [x] MagicDo
+- [ ] TCO
+- [ ] expand inlining
+- [ ] Android library
+- [ ] Aff reuse message queue? https://developer.android.com/reference/android/os/MessageQueue
