@@ -103,6 +103,7 @@ printExprAlg (ClassDeclF mods name args extends (_, body)) =
       hsep (printKtModifier <$> mods) <+> "class" <+> printKtIdent name 
          <+> parens (commaSep $ ("val"<+>) . (<+> ": Any") . printKtIdent <$> args) <+> extendsDoc (snd <$> extends) <+> body
 printExprAlg (VarRefF qualIdent) = printQualified printKtIdent qualIdent
+printExprAlg (CallF (_, a) [(Stmt _, body)]) = group $ nest' (a <> body)
 printExprAlg (CallF (_, a) args) = group $ nest' (a <> "(" <> commaSep ((softline' <>) . snd <$> args)) <> softline' <> ")"
 printExprAlg (VariableIntroductionF ident (_, a)) = "val" <+> printKtIdent ident <+> "=" <+> a
 printExprAlg (LambdaF arg (Stmt stmts, body)) = braces $ nest' $ 

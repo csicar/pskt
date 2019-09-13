@@ -1,17 +1,17 @@
 image: registry.gitlab.com/csicar/pskt
 
 build:
-        stage: build
-        script:
-                - make
-                - make install
-                - pwd
-                - ls /root/.local/bin
-        artifacts:
-                paths:
-                - /root/.local/bin
+   stage: build
+   script:
+      - make
+      - make install
+      - pwd
+      - ls /root/.local/bin
+   artifacts:
+      paths:
+      - /root/.local/bin
+
 test:
-        stage: test
-        script:
-                - make test
-        
+   stage: test
+   script:
+      - make test
