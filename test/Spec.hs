@@ -6,6 +6,7 @@ import CLI
 import System.Process
 import System.Directory
 import System.Exit
+import System.IO
 
 system' cmd = do
   code <- system cmd
@@ -19,13 +20,15 @@ withDefaultPath cmd =
 tests = do
   withDefaultPath "whereis purs"
   withCurrentDirectory "./test" $ withDefaultPath "spago build -- --codegen corefn"
-  compile $ CliOptions
+  system' "git clone https://github.com/csicar/pskt-foreigns kotlin/foreigns"
+  _ <- compile $ CliOptions
     { inputFiles = ["test/output/*/corefn.json"]
-    , foreignDirs = ["../foreigns/*.kt"]
+    , foreignDirs = ["./kotlin/foreigns/*.kt"]
     , outputDir = "./kotlin/src/main/kotlin/generated"
     , printCoreFn = False
     , printTranspiled = False
     }
+  hFlush stdout
   putStrLn "compiled"
   expectedOutput <- readFile "./test/src/Main.txt"
   withCurrentDirectory "./kotlin" $ do
