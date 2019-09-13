@@ -13,10 +13,15 @@ system' cmd = do
     ExitSuccess -> return ()
     ExitFailure a -> fail $ "Command failed with: " ++ show a
 
+withDefaultPath cmd = 
+  system' $ "bash -c 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; export PATH; "<> cmd <>"'"
+
 tests = TestCase $ do
-  system' "whereis purs"
-  withCurrentDirectory "./test" $ 
-    system' "spago build -- --codegen corefn"
+  withDefaultPath "whereis purs"
+  system' "echo version:"
+  system' "purs --version"
+  system' "echo $PATH"
+  withCurrentDirectory "./test" $ withDefaultPath "spago build -- --codegen corefn"
   compile $ CliOptions
     { inputFiles = ["test/output/*/corefn.json"]
     , foreignDirs = ["../foreigns/*.kt"]

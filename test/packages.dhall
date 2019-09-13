@@ -54,10 +54,7 @@ let overrides =
       upstream.halogen-vdom // { version = "v4.0.0" }
   }
 -------------------------------
--}
--- workaround for spago not recognizing the version correctly
-let overrides = { metadata = upstream.metadata // { version = "v0.13.0" } }
-{-
+
 ### Additions
 
 Purpose:
