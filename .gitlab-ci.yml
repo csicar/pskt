@@ -5,8 +5,6 @@ build:
    script:
       - make
       - make install
-      - pwd
-      - ls /root/.local/bin
       - cp /root/.local/bin/pskt .
    artifacts:
       paths:

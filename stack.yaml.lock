@@ -7,7 +7,7 @@ packages:
 - completed:
     cabal-file:
       size: 47005
-      sha256: 31dfbbbe473ad40c46f4d3f52b38e15008b5afd15c3127adba791d6fdcb7b231
+      sha256: 40da1664e2b3b4429d94dc14242ed08269efd1fe51b1b91c7af907bb7e18df2c
     name: purescript
     version: 0.13.0
     git: https://github.com/purescript/purescript

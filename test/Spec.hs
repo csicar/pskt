@@ -28,9 +28,9 @@ tests = do
       , printTranspiled = False
       , printVersion = True
       }
-    hFlush stdout
     putStrLn "compiled"
-  system' "ln -s -f ./test/output/pskt ./kotlin/src/main/kotlin/generated"
+    hFlush stdout
+  system' "ln -s -f $(pwd)/test/output/pskt ./kotlin/src/main/kotlin/generated"
   expectedOutput <- readFile "./test/src/Main.txt"
   withCurrentDirectory "./kotlin" $ do
     system' "JAVA_HOME=/usr/lib/jvm/default gradle fatJar"
