@@ -45,6 +45,7 @@ dependencies:
 - gitrev -any
 - recursion-schemes
 - deriving-compat
+- shake
 
 library:
   source-dirs: src

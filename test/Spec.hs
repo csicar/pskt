@@ -19,17 +19,18 @@ withDefaultPath cmd =
 
 tests = do
   withDefaultPath "whereis purs"
-  withCurrentDirectory "./test" $ withDefaultPath "spago build -- --codegen corefn"
-  system' "git clone https://github.com/csicar/pskt-foreigns kotlin/foreigns"
-  _ <- compile $ CliOptions
-    { inputFiles = ["test/output/*/corefn.json"]
-    , foreignDirs = ["./kotlin/foreigns/*.kt"]
-    , outputDir = "./kotlin/src/main/kotlin/generated"
-    , printCoreFn = False
-    , printTranspiled = False
-    }
-  hFlush stdout
-  putStrLn "compiled"
+  system' "rm -rf ./kotlin/src/main/kotlin/foreigns"
+  system' "git clone https://github.com/csicar/pskt-foreigns kotlin/src/main/kotlin/foreigns"
+  withCurrentDirectory "./test" $ do
+    withDefaultPath "spago build -- --codegen corefn"
+    _ <- compile $ CliOptions
+      { printCoreFn = False
+      , printTranspiled = False
+      , printVersion = True
+      }
+    hFlush stdout
+    putStrLn "compiled"
+  system' "ln -s -f ./test/output/pskt ./kotlin/src/main/kotlin/generated"
   expectedOutput <- readFile "./test/src/Main.txt"
   withCurrentDirectory "./kotlin" $ do
     system' "JAVA_HOME=/usr/lib/jvm/default gradle fatJar"

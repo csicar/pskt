@@ -1,12 +1,12 @@
 module Main where
 
 import Options.Applicative hiding (Success)
-
+import Prelude
 import CLI
 
 main :: IO ()
 main = do
-  putStrLn "pskt start:"
+  putStrLn "PsKt transpile:"
   opts <- execParser optsParserInfo
-  putStrLn "parsed"
   compile opts
+  putStrLn "done"

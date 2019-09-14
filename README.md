@@ -28,17 +28,17 @@ Project Setup
 
 ```bash
 $ cd your-project
-# import foreign files for kotlin
-$ git clone https://github.com/csicar/pskt-foreigns
 
 # setup purescript
 $ mkdir purescript
 $ cd purescript
 $ spago init
-$ spago build -- -g corefn
-# build kotlin files
-$ pskt -o ../src/main/kotlin/output/ -f "../pskt-foreigns/*.kt"
-# transpiled files will be written to ../src/main/kotlin/output/
+$ spago build -- -g corefn && pskt
+# transpiled files will be written to output/pskt
+# import foreign files for kotlin
+$ git clone https://github.com/csicar/pskt-foreigns ../src/main/kotlin/foreigns
+# symlink generated files
+$ ln -s output/pskt ../src/main/kotlin/generated
 ```
 
 ### Troubleshooting
