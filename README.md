@@ -128,6 +128,7 @@ ToDos
 -----
 
 - [x] MagicDo
+- [ ] Build cache
 - [ ] TCO
 - [ ] expand inlining
 - [ ] Android library
