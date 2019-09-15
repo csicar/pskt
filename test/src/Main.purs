@@ -88,6 +88,10 @@ main = do
   logShow val
   log "test ST"
   logShow stTest
-  log "test inline semigroup"
+  log "test inline"
   logShow ( (<>) [1, 2] [3])
+  logShow (1 + 2)
+  logShow (1 * 2 *3)
+  logShow $ true && false
+  logShow $ true || false
   pure 1

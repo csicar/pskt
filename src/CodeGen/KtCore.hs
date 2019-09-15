@@ -43,8 +43,10 @@ data BinOp
   = Equals
   | IsType
   | And
+  | Or
   | To -- for Pairs: `1 to "Hi"`
   | Add
+  | Mul
   deriving (Show, Eq)
 
 data UnaryOp

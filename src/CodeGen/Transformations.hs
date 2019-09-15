@@ -97,14 +97,28 @@ addElseCases = cata alg where
 inline :: KtExpr -> KtExpr
 inline = cata alg where
   alg :: KtExprF KtExpr -> KtExpr
-  alg (CallAppF (CallApp (CallApp (QualRef Semigroup "append") (QualRef Semigroup "semiringString")) a) b)
+  alg (CallAppF (CallApp (CallApp (QualRef Semigroup "append") (QualRef Semigroup "semigroupString")) a) b)
     = Binary Add (ktAsString a) (ktAsString b)
   alg (CallAppF (CallApp (CallApp (QualRef Semigroup "append") (QualRef Semigroup "semigroupArray")) a) b)
     = Binary Add (ktAsList a) (ktAsList b)
+
   alg (CallAppF (CallApp (QualRef Function "apply") a) b)
     = CallApp a b
+
   alg (CallAppF (CallApp (QualRef Ring "negate") (QualRef Ring "ringInt")) a)
     = Unary Negate (ktAsInt a)
+
+  alg (CallAppF (CallApp (CallApp (QualRef Semiring "add") (QualRef Semiring "semiringInt")) a) b)
+    = Binary Add (ktAsInt a) (ktAsInt b)
+  alg (CallAppF (CallApp (CallApp (QualRef Semiring "mul") (QualRef Semiring "semiringInt")) a) b)
+    = Binary Mul (ktAsInt a) (ktAsInt b)
+
+  alg (CallAppF (CallApp (CallApp (QualRef HeytingAlgebra "conj") (QualRef HeytingAlgebra "heytingAlgebraBoolean")) a) b)
+    = Binary And (KtAsBool a) (KtAsBool b)
+  alg (CallAppF (CallApp (CallApp (QualRef HeytingAlgebra "disj") (QualRef HeytingAlgebra "heytingAlgebraBoolean")) a) b)
+    = Binary Or (KtAsBool a) (KtAsBool b)
+
+
   alg a = embed a
 
 -- `Prim.undefined` is used for arguments that are not used by the reciever (from what I can tell)

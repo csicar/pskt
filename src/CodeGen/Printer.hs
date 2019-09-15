@@ -130,8 +130,10 @@ printExprAlg a = pretty $ show a
 printOp Equals = "=="
 printOp IsType = "is"
 printOp And = "&&"
+printOp Or = "||"
 printOp To = "to"
 printOp Add = "+"
+printOp Mul = "*"
 
 printUnary Negate = "-"
 

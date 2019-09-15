@@ -37,6 +37,7 @@ tests = do
     putStrLn "compiled"
     hFlush stdout
   system' "ln -s -f $(pwd)/test/output/pskt/ ./kotlin/src/main/kotlin/generated"
+  -- system' "cp -a ./test/output/pskt/. ./kotlin/src/main/kotlin/generated"
   expectedOutput <- readFile "./test/src/Main.txt"
   withCurrentDirectory "./kotlin" $ do
     system' "JAVA_HOME=/usr/lib/jvm/default gradle fatJar"

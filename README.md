@@ -46,6 +46,9 @@ $ ln -s output/pskt ../src/main/kotlin/generated
 When compiling with `kotlinc` you might get some weird errors like `OutOfMemory` exceptions. 
 This can be fixed by using a gradle build script. See [kotlin test](https://github.com/csicar/pskt/tree/kotlin/kotlin/build.gradle) for an example. 
 
+Sometimes the kotlin compiler reports this error: `e: ...Main.kt: (6, 8): Redeclaration: Module`
+The fix is removing the gradle build folder and compiling again: `rm -r build`
+
 Implementation
 --------------
 

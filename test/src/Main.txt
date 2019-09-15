@@ -23,5 +23,9 @@ test magicDo
 4
 test ST
 338350
-test inline semigroup
+test inline
 [1,2,3]
+3
+6
+false
+true
