@@ -18,7 +18,7 @@ import Control.Monad.ST.Ref as STRef
 
 composeTest x = (_ + 1) >>> (_ * 8983)
 
-f = [12, 2,3] <>[2]
+f = [12, 2,3] <> [2]
 
 fac 0 = 1
 fac n = n* fac (n - 1)
@@ -88,4 +88,6 @@ main = do
   logShow val
   log "test ST"
   logShow stTest
+  log "test inline semigroup"
+  logShow ( (<>) [1, 2] [3])
   pure 1

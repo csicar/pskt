@@ -119,6 +119,7 @@ printExprAlg (FunRefF qualIdent) = parens $ "::" <> printQualified printKtIdent 
 printExprAlg (ConstF lit) = printLiteral lit
 printExprAlg (WhenExprF cases) = "when" <+> braceNested (vsep $ printWhenCases . fmap snd <$> cases)
 printExprAlg (BinaryF op (_, a) (_, b)) = parens $ a <+> printOp op <+> b
+printExprAlg (UnaryF op (_, a)) = parens $ printUnary op <+> a
 printExprAlg (ObjectAccessF (_, obj) (_, key)) = obj <> brackets key <> "!!"
 printExprAlg (ArrayAccessF (_, arr) (_, index)) = arr <> brackets index
 printExprAlg (CastF (_, a) (_, b)) = parens $ a <+> "as" <+> b
@@ -132,6 +133,7 @@ printOp And = "&&"
 printOp To = "to"
 printOp Add = "+"
 
+printUnary Negate = "-"
 
 printWhenCases (WhenCase conds body) = group (joinWith "&&" (ensureOneElement conds) <+> "->") <+> body
    where 

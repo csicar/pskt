@@ -23,3 +23,5 @@ test magicDo
 4
 test ST
 338350
+test inline semigroup
+[1,2,3]

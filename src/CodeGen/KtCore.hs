@@ -47,6 +47,10 @@ data BinOp
   | Add
   deriving (Show, Eq)
 
+data UnaryOp
+  = Negate
+  deriving (Show, Eq)
+
 newtype KtIdent = MkKtIdent Text deriving (Show, Eq)
 runKtIdent (MkKtIdent a) = a
 
@@ -90,6 +94,7 @@ data KtExpr
   | WhenExpr [WhenCase KtExpr]
   | VariableIntroduction KtIdent KtExpr
   | Binary BinOp KtExpr KtExpr
+  | Unary UnaryOp KtExpr
   | Property KtExpr KtExpr
   | ArrayAccess KtExpr KtExpr
   | ObjectAccess KtExpr KtExpr
@@ -182,6 +187,9 @@ ktAsString a = Cast a (varRefUnqual $ MkKtIdent "String")
 
 ktAsList :: KtExpr -> KtExpr
 ktAsList a = Cast a (varRefUnqual $ MkKtIdent "List<Any>")
+
+ktAsInt :: KtExpr -> KtExpr
+ktAsInt a = Cast a (varRefUnqual $ MkKtIdent "Int")
 
 ktFun a b = Fun a [b]
 

@@ -94,26 +94,17 @@ addElseCases = cata alg where
         errorMsg = ktAsAny (Call (varRefUnqual $ MkKtIdent "error") [ktString "Error in Pattern Match"])
   alg a = embed a
 
--- <mod>.<f>.app(<mod>.<cls>).app(<a>).app(<b>)
-pattern CallOn2 mod cls mod' f a b = 
-  (CallAppF
-    ((CallApp
-      ((CallApp
-        ((VarRef (Qualified (Just mod') f)))
-        ((VarRef (Qualified (Just mod) cls)))
-      ))
-      a
-    ))
-    b
-  )
-
 inline :: KtExpr -> KtExpr
 inline = cata alg where
   alg :: KtExprF KtExpr -> KtExpr
-  alg (CallOn2 Semigroup (MkKtIdent "semigroupString") Semigroup (MkKtIdent "append") a b)
+  alg (CallAppF (CallApp (CallApp (QualRef Semigroup "append") (QualRef Semigroup "semiringString")) a) b)
     = Binary Add (ktAsString a) (ktAsString b)
-  alg (CallOn2 Semigroup (MkKtIdent "semigroupArray") Semigroup (MkKtIdent "append") a b)
+  alg (CallAppF (CallApp (CallApp (QualRef Semigroup "append") (QualRef Semigroup "semigroupArray")) a) b)
     = Binary Add (ktAsList a) (ktAsList b)
+  alg (CallAppF (CallApp (QualRef Function "apply") a) b)
+    = CallApp a b
+  alg (CallAppF (CallApp (QualRef Ring "negate") (QualRef Ring "ringInt")) a)
+    = Unary Negate (ktAsInt a)
   alg a = embed a
 
 -- `Prim.undefined` is used for arguments that are not used by the reciever (from what I can tell)

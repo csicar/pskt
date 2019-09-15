@@ -7,6 +7,7 @@ import System.Process
 import System.Directory
 import System.Exit
 import System.IO
+import Data.Functor (void)
 
 system' cmd = do
   code <- system cmd
@@ -17,10 +18,15 @@ system' cmd = do
 withDefaultPath cmd = 
   system' $ "bash -c 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; export PATH; "<> cmd <>"'"
 
+foreignsDirectory = "./kotlin/src/main/kotlin/foreigns"
+
 tests = do
   withDefaultPath "whereis purs"
-  system' "rm -rf ./kotlin/src/main/kotlin/foreigns"
-  system' "git clone https://github.com/csicar/pskt-foreigns kotlin/src/main/kotlin/foreigns"
+  foreignsExists <- doesDirectoryExist foreignsDirectory
+  if foreignsExists then
+    withCurrentDirectory foreignsDirectory $ void $ system "git pull"
+  else 
+    system' "git clone https://github.com/csicar/pskt-foreigns kotlin/src/main/kotlin/foreigns"
   withCurrentDirectory "./test" $ do
     withDefaultPath "spago build -- --codegen corefn"
     _ <- compile $ CliOptions
@@ -30,7 +36,7 @@ tests = do
       }
     putStrLn "compiled"
     hFlush stdout
-  system' "ln -s -f $(pwd)/test/output/pskt ./kotlin/src/main/kotlin/generated"
+  system' "ln -s -f $(pwd)/test/output/pskt/ ./kotlin/src/main/kotlin/generated"
   expectedOutput <- readFile "./test/src/Main.txt"
   withCurrentDirectory "./kotlin" $ do
     system' "JAVA_HOME=/usr/lib/jvm/default gradle fatJar"
