@@ -128,8 +128,11 @@ ToDos
 -----
 
 - [x] MagicDo
-- [ ] Build cache
+- [x] Build cache
+ - [x] use Shake
 - [ ] TCO
 - [ ] expand inlining
+  - [ ] `compose`
 - [ ] Android library
+  - beginnings in the [android example](https://github.com/csicar/pskt-android-example/tree/master/app/src/main/java/de/csicar/myapplication)
 - [ ] Aff - reuse message queue? https://developer.android.com/reference/android/os/MessageQueue

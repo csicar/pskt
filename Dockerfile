@@ -44,11 +44,11 @@ RUN su build -c 'yay -S --needed --noprogressbar --needed --noconfirm purescript
 
 RUN su build -c 'yay -S --needed --noprogressbar --needed --noconfirm stack'
 
+RUN su build -c 'yay -S --needed --noprogressbar --needed --noconfirm gradle'
+
 # populate caches to speed up compilation
 RUN stack setup
 WORKDIR /root
 RUN git clone https://gitlab.com/csicar/pskt/ pskt-cache
 WORKDIR /root/pskt-cache
 RUN make 
-
-RUN su build -c 'yay -S --needed --noprogressbar --needed --noconfirm gradle'
