@@ -48,7 +48,7 @@ import Data.Text.Prettyprint.Doc (pretty)
 import Data.Text.Prettyprint.Doc.Render.Text (renderIO)
 import System.IO (openFile, IOMode(..), hClose, print)
 
-import Options.Applicative (many, argument, metavar, help, option, long, short, Parser, ParserInfo, header, progDesc, fullDesc, helper, info, switch, value, str, (<**>))
+import Options.Applicative (many, auto, argument, metavar, help, option, long, short, Parser, ParserInfo, header, progDesc, fullDesc, helper, info, switch, value, str, (<**>))
 
 import Text.Pretty.Simple (pPrint)
 import Version
@@ -73,6 +73,8 @@ data CliOptions = CliOptions
   { printVersion :: Bool
   , printCoreFn :: Bool
   , printTranspiled :: Bool
+  , runProgram :: Bool
+  , foreigns :: [FilePath]
   }
 
 cli :: Parser CliOptions
@@ -90,6 +92,17 @@ cli = CliOptions
     ( long "print-transpiled"
     <> help "print debug info about transpiled files"
     )
+  <*> switch
+    ( long "run"
+    <> help "also run the transpiled program: The entry point is expected to be `Main.main :: Effect _` "
+    )
+  <*> many
+    ( option auto
+      ( long "foreigns"
+      <> help "pattern for foreign files; can be a file or folder. The matching files are passed to kotlinc"
+      )
+    )
+
 -- Adding program help text to the parser
 optsParserInfo :: ParserInfo CliOptions
 optsParserInfo = info (cli <**> helper)
@@ -105,16 +118,37 @@ shakeOpts = shakeOptions
   , shakeVersion = versionString
   }
 
+getModuleNames = fmap (takeFileName . takeDirectory) <$> getDirectoryFiles "" ["output/*/corefn.json"]
+
 compile :: CliOptions -> IO ()
 compile opts = shake shakeOpts $ do
   action $ do
     when (printVersion opts) $ putNormal $ "PsKt Version: " <> versionString
-    cs <- fmap (takeFileName. takeDirectory) <$> getDirectoryFiles "" ["output/*/corefn.json"]
+    cs <- getModuleNames
     let kotlinFiles = ["output/pskt" </>  c <.> "kt" | c <- cs]
-    need ["output/pskt/PSRuntime.kt"]
+    need ["output/pskt/PsRuntime.kt"]
     need kotlinFiles
+    when (runProgram opts) $ need ["run"]
+
+  phony "run" $ do
+    need ["output/pskt/program.jar"]
+    command_ [] "java" ["-jar", "output/pskt/program.jar"]
+
+  "output/pskt/program.jar" %> \out -> do
+    ktFiles <- fmap (\modName -> "output/pskt" </> modName <.> "kt") <$> getModuleNames
+    need ktFiles
+    need ["output/pskt/PsRuntime.kt", "output/pskt/EntryPoint.kt"]
+    let foreignFiles = foreigns opts 
+    command_ 
+      [AddEnv "JAVA_OPTS" "-Xmx2G -Xms256M"] 
+      "kotlinc" $
+        ["output/pskt/PsRuntime.kt", "output/pskt/EntryPoint.kt"] 
+        ++ ktFiles 
+        ++ foreignFiles 
+        ++ ["-include-runtime", "-d", out]
   
-  "output/pskt/PSRuntime.kt" %> \out ->
+
+  "output/pskt/PsRuntime.kt" %> \out ->
     writeFileChanged out $ unlines
       [ "package Foreign.PsRuntime;"
       , ""
@@ -125,27 +159,18 @@ compile opts = shake shakeOpts $ do
       , "fun Any.appRun() = (this as () -> Any)()"
       ]
 
+  "output/pskt/EntryPoint.kt" %> \out ->
+    writeFileChanged out $ unlines
+      [ "import Foreign.PsRuntime.appRun;"
+      , ""
+      , "fun main() {"
+      , "   PS.Main.Module.main.appRun()"
+      , "}"
+      ]
+
   "output/pskt/*.kt" %> \out -> do
     let modName = takeBaseName out
     processFile opts out ("output" </> modName </> "corefn.json")
-  -- do
-  -- let files = case inputFiles opts of
-  --       [] -> ["output/*/corefn.json"]
-  --       a -> a
-  -- let outputPath = outputDir opts
-  -- putStrLn "input:"
-  -- foundInputFiles <- G.globDir (G.compile <$> files) "./"
-  -- print foundInputFiles
-  -- putStrLn "outputPath:"
-  -- print outputPath
-  -- addRuntime outputPath
-  -- foundForeignFiles <- G.globDir (G.compile <$> foreignDirs opts) "./"
-  -- putStrLn "foreignFiles:"
-  -- print foundForeignFiles
-  -- let foreignOutput = outputPath </> "foreigns"
-  -- createDirectoryIfMissing True foreignOutput
-  -- for_ (concat foundForeignFiles) $ \ktFile -> copyFile ktFile (foreignOutput </> takeFileName ktFile)
-  -- for_ (concat foundInputFiles) $ \file -> processFile opts outputPath file
 
 processFile :: CliOptions -> FilePath -> FilePath -> Action ()
 processFile opts outFile path = do

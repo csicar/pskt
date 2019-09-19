@@ -88,12 +88,18 @@ Function calls are sugared with `.app(...)` to make the generated code more read
 
 ### Bootstrapping
 
-To run a purescript program `main :: Effect Unit`:
+When `pskt` is started with the `--run` option, bootstrapping will be done by the compiler. In that case, the entry point of the purescript program is expected to be `Main.main` with type `:: Effect _`.
+
+It is also possible to do custom bootstrapping: 
+
+To run a purescript program `main :: Effect Unit` defined in the module `MyModule`:
 ```kotlin
 fun main() {
-  PS.MyModule.main() // or use .appRun() if the type is Any
+  PS.MyModule.Module.main() // or use .appRun() if the type of `main` is Any
 }
 ```
+
+If your `main` function expects additional arguments, you call it like this: `PS.MyModule.Module.main.app(activity).appRun()`
 
 
 FFI
@@ -133,9 +139,15 @@ ToDos
 - [x] MagicDo
 - [x] Build cache
  - [x] use Shake
+- [x] `--run` for spago CLI spec
 - [ ] TCO
 - [ ] expand inlining
   - [x] `$`
+  - [ ] `>`, `>=` ...
 - [ ] Android library
   - beginnings in the [android example](https://github.com/csicar/pskt-android-example/tree/master/app/src/main/java/de/csicar/myapplication)
-- [ ] Aff - reuse message queue? https://developer.android.com/reference/android/os/MessageQueue
+- [ ] Aff 
+  - build on Coroutines' `Async` & `Deferred` ?
+    - `bind` : `{a, f -> async { f(a.await()) }`
+    - ...
+  - reuse message queue? https://developer.android.com/reference/android/os/MessageQueue
