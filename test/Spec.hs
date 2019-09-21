@@ -19,14 +19,15 @@ withDefaultPath cmd =
   system' $ "bash -c 'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; export PATH; "<> cmd <>"'"
 
 foreignsDirectory = "./foreigns"
+foreignsDirectoryGlobal = "./test/foreigns"
 
 tests = do
   withDefaultPath "whereis purs"
-  foreignsExists <- doesDirectoryExist foreignsDirectory
+  foreignsExists <- doesDirectoryExist foreignsDirectoryGlobal
   if foreignsExists then
-    withCurrentDirectory foreignsDirectory $ void $ system "git pull"
+    withCurrentDirectory foreignsDirectoryGlobal $ void $ system "git pull"
   else 
-    system' "git clone https://github.com/csicar/pskt-foreigns kotlin/src/main/kotlin/foreigns"
+    system' $ "git clone https://github.com/csicar/pskt-foreigns " <> foreignsDirectoryGlobal
   withCurrentDirectory "./test" $ do
     system "rm -r output"
     withDefaultPath "spago build -- --codegen corefn"
