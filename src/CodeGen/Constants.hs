@@ -23,7 +23,7 @@ moduleNamespace = ProperName "Module"
 pattern PrimModule = ModuleName [ProperName "PS", ProperName "Prim", ProperName "Module"]
 
 pattern Semigroup = ModuleName [ProperName "PS", ProperName "Data", ProperName "Semigroup", ProperName "Module"]
-pattern Function = ModuleName [ProperName "PS", ProperName "Function", ProperName "Module"]
+pattern Function = ModuleName [ ProperName "PS", ProperName "Data", ProperName "Function", ProperName "Module"] 
 pattern Semiring = ModuleName [ProperName "PS", ProperName "Data", ProperName "Semiring", ProperName "Module"]
 pattern Ring = ModuleName [ProperName "PS", ProperName "Data", ProperName "Ring", ProperName "Module"]
 pattern HeytingAlgebra = ModuleName [ProperName "PS", ProperName "Data", ProperName "HeytingAlgebra", ProperName "Module"]
