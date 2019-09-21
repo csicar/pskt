@@ -140,7 +140,7 @@ ToDos
 - [x] Build cache
  - [x] use Shake
 - [x] `--run` for spago CLI spec
-- [ ] TCO
+- [x] TCO: through Kotlin's `tailrec`
 - [ ] expand inlining
   - [x] `$`
   - [ ] `>`, `>=` ...
