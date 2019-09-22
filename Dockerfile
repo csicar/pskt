@@ -46,6 +46,8 @@ RUN su build -c 'yay -S --needed --noprogressbar --needed --noconfirm stack'
 
 RUN su build -c 'yay -S --needed --noprogressbar --needed --noconfirm gradle'
 
+RUN su build -c 'yay -S --needed --noprogressbar --needed --noconfirm kotlin'
+
 # populate caches to speed up compilation
 RUN stack setup
 WORKDIR /root
