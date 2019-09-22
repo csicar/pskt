@@ -97,7 +97,7 @@ cli = CliOptions
     <> help "also run the transpiled program: The entry point is expected to be `Main.main :: Effect _` "
     )
   <*> many
-    ( option auto
+    ( option str
       ( long "foreigns"
       <> help "pattern for foreign files; can be a file or folder. The matching files are passed to kotlinc"
       )
@@ -139,8 +139,8 @@ compile opts = shake shakeOpts $ do
     need ktFiles
     need ["output/pskt/PsRuntime.kt", "output/pskt/EntryPoint.kt"]
     let foreignFiles = foreigns opts 
-    command_ 
-      [AddEnv "JAVA_OPTS" "-Xmx2G -Xms256M"] 
+    command_
+      [AddEnv "JAVA_OPTS" "-Xmx2G -Xms256M"]
       "kotlinc" $
         ["output/pskt/PsRuntime.kt", "output/pskt/EntryPoint.kt"] 
         ++ ktFiles 
