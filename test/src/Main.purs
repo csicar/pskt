@@ -15,7 +15,6 @@ import Data.Array (uncons)
 import Data.Maybe
 import Control.Monad.ST as ST
 import Control.Monad.ST.Ref as STRef
-import Effect.Aff
 
 composeTest x = (_ + 1) >>> (_ * 8983)
 
