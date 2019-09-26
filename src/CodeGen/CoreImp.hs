@@ -165,7 +165,7 @@ moduleToKt mod = sequence
       exprToKt (Case _ compareVals caseAlternatives) = WhenExpr . concat <$> mapM (caseToKt compareVals) caseAlternatives
       exprToKt (Accessor _ key obj) = do
          ktObj <- exprToKt obj
-         return $ ObjectAccess (Cast ktObj $ varRefUnqual mapType) (ktString key)
+         return $ ObjectAccess (ktAsMap ktObj) (ktString key)
       exprToKt (Let _ binds body) = do
          ktBinds <- mapM (bindToKt identity) binds 
          let normalBinds = concatMap (\(normalBind, _, _) -> normalBind) ktBinds
@@ -178,6 +178,10 @@ moduleToKt mod = sequence
                ((\normalRef -> VariableIntroduction normalRef $ Property (varRefUnqual $ MkKtIdent "this") (varRefUnqual normalRef)) <$> normalRefs)
                ++ [ktBody]
             ]--(ktStmt $ ktBinds ++ [ktBody]) [] -- TODO: limit to situations where wrapping in call is necessary
+      exprToKt (ObjectUpdate _ ref updates) = do
+         ktRef <- exprToKt ref
+         ktUpdateLiteral <- Const <$> forMLiteral (ObjectLiteral updates) exprToKt
+         pure $ Binary Add (ktAsMap ktRef) ktUpdateLiteral
       exprToKt a = pTraceShow a undefined
       
       caseToKt :: MonadSupply m => [Expr Ann] -> CaseAlternative Ann -> m [WhenCase KtExpr]

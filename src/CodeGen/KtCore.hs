@@ -114,9 +114,6 @@ data KtExpr
 makeBaseFunctor ''KtExpr
 deriveShow ''KtExprF
 
-mapType :: KtIdent
-mapType = MkKtIdent "Map<String, Any>"
-
 freshText :: MonadSupply m => Text -> m Text
 freshText hint = (("_" <> hint) <>) . T.pack . show <$> fresh
 
@@ -168,7 +165,7 @@ getLength :: KtExpr -> KtExpr
 getLength a = Property (ktAsList a) (varRefUnqual $ MkKtIdent "size")
 
 getEntryCount :: KtExpr -> KtExpr
-getEntryCount a = Property (Cast a (varRefUnqual $ MkKtIdent "Map<String, Any>")) (varRefUnqual $ MkKtIdent "size")
+getEntryCount a = Property (ktAsMap a) (varRefUnqual $ MkKtIdent "size")
 
 ktInt :: Integer -> KtExpr
 ktInt = Const . NumericLiteral . Left
@@ -189,6 +186,9 @@ ktAsString a = Cast a (varRefUnqual $ MkKtIdent "String")
 
 ktAsList :: KtExpr -> KtExpr
 ktAsList a = Cast a (varRefUnqual $ MkKtIdent "List<Any>")
+
+ktAsMap :: KtExpr -> KtExpr
+ktAsMap a = Cast a (varRefUnqual $ MkKtIdent "Map<String, Any>")
 
 ktAsInt :: KtExpr -> KtExpr
 ktAsInt a = Cast a (varRefUnqual $ MkKtIdent "Int")

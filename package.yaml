@@ -90,4 +90,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - pskt
-    - HUnit
+    - hspec

@@ -15,6 +15,7 @@ import Data.Array (uncons)
 import Data.Maybe
 import Control.Monad.ST as ST
 import Control.Monad.ST.Ref as STRef
+import Effect.Aff
 
 composeTest x = (_ + 1) >>> (_ * 8983)
 
@@ -94,4 +95,8 @@ main = do
   logShow (1 * 2 *3)
   logShow $ true && false
   logShow $ true || false
+  log "test records"
+  logShow {}
+  logShow {a: 2, b: 3}
+  logShow ({a: 2, b: 3} {b = 0} )
   pure 1
