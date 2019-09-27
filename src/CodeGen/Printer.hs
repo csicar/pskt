@@ -128,6 +128,7 @@ printExprAlg (WhileF (_, cond) (_, body)) = "while" <+> parens cond <+> body
 printExprAlg a = pretty $ show a
 
 printOp Equals = "=="
+printOp NotEquals = "!="
 printOp IsType = "is"
 printOp And = "&&"
 printOp Or = "||"

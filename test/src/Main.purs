@@ -61,6 +61,10 @@ stTest = ST.run do
         loop (n - 1)
   loop 100
 
+testDestructure {a} = a
+
+testDestructure2 {a, b} = a + b
+
 main = do
   log "test unicode:"
   log "start 😁 😂 🤣 😃 😄 😅 end $ ' \""
@@ -98,4 +102,7 @@ main = do
   logShow {}
   logShow {a: 2, b: 3}
   logShow ({a: 2, b: 3} {b = 0} )
+  log "test destructuring"
+  logShow $ testDestructure {a: 3, b: 3}
+  logShow $ testDestructure2 {a: 9, b: 4, c: 29}
   pure 1

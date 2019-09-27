@@ -225,7 +225,7 @@ moduleToKt mod = sequence
             specificGuard (ArrayLiteral a) = 
                Binary Equals (getLength compareVal) (ktInt $ fromIntegral $ length a)
             specificGuard (ObjectLiteral a) = 
-               Binary Equals (getEntryCount compareVal) (ktInt $ fromIntegral $ length a)
+               Binary NotEquals (ktAsMap compareVal) (varRefUnqual $ MkKtIdent "null")
             specificGuard (NumericLiteral a) = Binary Equals compareVal $ Const $ NumericLiteral a
             specificGuard (StringLiteral a) = Binary Equals compareVal $ Const $ StringLiteral a
             specificGuard (CharLiteral a) = Binary Equals compareVal $ Const $ CharLiteral a

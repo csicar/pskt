@@ -41,6 +41,7 @@ deriving instance Traversable Literal
 
 data BinOp
   = Equals
+  | NotEquals
   | IsType
   | And
   | Or

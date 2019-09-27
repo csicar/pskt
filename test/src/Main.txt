@@ -33,3 +33,6 @@ test records
 {}
 { a: 2, b: 3 }
 { a: 2, b: 0 }
+test destructuring
+3
+13
