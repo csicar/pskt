@@ -33,7 +33,9 @@ $ cd your-project
 $ mkdir purescript
 $ cd purescript
 $ spago init
-$ spago build -- -g corefn && pskt
+# tell spago that you want to use the pskt backend
+$ sed -i '6 a , backend = \n    "pskt"' spago.dhall
+$ spago build
 # transpiled files will be written to output/pskt
 # import foreign files for kotlin
 $ git clone https://github.com/csicar/pskt-foreigns ../src/main/kotlin/foreigns
