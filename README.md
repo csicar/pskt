@@ -33,14 +33,23 @@ $ cd your-project
 $ mkdir purescript
 $ cd purescript
 $ spago init
-# tell spago that you want to use the pskt backend
-$ sed -i '6 a , backend = \n    "pskt"' spago.dhall
-$ spago build
+$ spago build --purs-args --codegen --purs-args corefn && pskt
 # transpiled files will be written to output/pskt
 # import foreign files for kotlin
 $ git clone https://github.com/csicar/pskt-foreigns ../src/main/kotlin/foreigns
 # symlink generated files
 $ ln -s output/pskt ../src/main/kotlin/generated
+```
+
+Once the next version of spago is released, there will be first class support of alternative backends.
+Then compiling and executing can be done like this:
+
+```bash
+# tell spago that you want to use the pskt backend
+$ sed -i '6 a , backend = \n    "pskt"' spago.dhall
+# now use spago normally
+$ spago build
+$ spago run
 ```
 
 ### Troubleshooting
