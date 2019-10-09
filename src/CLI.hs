@@ -10,6 +10,7 @@ import Data.Aeson
 import Data.Aeson.Types hiding (Parser)
 import Data.Char
 import Data.Foldable (for_)
+import Data.Traversable (forM)
 import Data.FileEmbed (embedFile)
 import Data.List (delete, intercalate, isPrefixOf, nub, partition)
 import Data.Maybe
@@ -99,7 +100,7 @@ cli = CliOptions
   <*> many
     ( option str
       ( long "foreigns"
-      <> help "pattern for foreign files; can be a file or folder. The matching files are passed to kotlinc"
+      <> help "folders containing foreign files. The matching files are passed to kotlinc and copied to the `output` folder"
       )
     )
 
@@ -126,6 +127,7 @@ compile opts = shake shakeOpts $ do
     when (printVersion opts) $ putNormal $ "PsKt Version: " <> versionString
     cs <- getModuleNames
     let kotlinFiles = ["output/pskt" </>  c <.> "kt" | c <- cs]
+    need ["foreigns"]
     need ["output/pskt/PsRuntime.kt"]
     need kotlinFiles
     when (runProgram opts) $ need ["run"]
@@ -137,14 +139,13 @@ compile opts = shake shakeOpts $ do
   "output/pskt/program.jar" %> \out -> do
     ktFiles <- fmap (\modName -> "output/pskt" </> modName <.> "kt") <$> getModuleNames
     need ktFiles
-    need ["output/pskt/PsRuntime.kt", "output/pskt/EntryPoint.kt"]
-    let foreignFiles = foreigns opts 
+    need ["output/pskt/EntryPoint.kt"]
     command_
       [AddEnv "JAVA_OPTS" "-Xmx2G -Xms256M"]
       "kotlinc" $
         ["output/pskt/PsRuntime.kt", "output/pskt/EntryPoint.kt"] 
         ++ ktFiles 
-        ++ foreignFiles 
+        ++ ["output/pskt/foreigns" ]
         ++ ["-include-runtime", "-d", out]
   
 
@@ -168,9 +169,24 @@ compile opts = shake shakeOpts $ do
       , "}"
       ]
 
+  phony "foreigns" $ do
+    let foreignOut = "output/pskt/foreigns/"
+    foreignFiles <- forM (foreigns opts) $ \folder -> do
+      files <- getDirectoryFiles folder ["*.kt"]
+      return $ (\file -> (fileToModule file, folder </> file)) <$> files
+    for_ (concat foreignFiles) $ \(modName, file) ->
+      copyFileChanged file (foreignOut </> modName <.> "kt")
+      
+
   "output/pskt/*.kt" %> \out -> do
     let modName = takeBaseName out
     processFile opts out ("output" </> modName </> "corefn.json")
+
+fileToModule :: FilePath -> String
+fileToModule path = replaceSlash <$> path
+    where 
+      replaceSlash '/' = '.'
+      replaceSlash char = char
 
 processFile :: CliOptions -> FilePath -> FilePath -> Action ()
 processFile opts outFile path = do
