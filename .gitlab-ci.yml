@@ -10,6 +10,25 @@ build:
       paths:
       - pskt
 
+build-ubuntu:
+   image: ubuntu:20.04
+   stage: build
+   before_script:
+      - apt-get update
+      - apt-get install -y curl libpq-dev libgnutls30 netbase libstdc++6 ca-certificates git clang zlib1g-dev
+      - curl -sSL https://get.haskellstack.org/ | sh
+      - stack upgrade --binary-only
+      - export PATH="~/.local/bin:$PATH"
+      - hash stack=~/.local/bin/stack
+      - stack --version
+   script:
+      - make
+      - make install
+      - cp /root/.local/bin/pskt pskt-ubuntu
+   artifacts:
+      paths:
+         - pskt-ubuntu
+
 test:
    stage: test
    script:

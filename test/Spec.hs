@@ -31,13 +31,13 @@ spec =
         system' $ "git clone https://github.com/csicar/pskt-foreigns " <> foreignsDirectoryGlobal
       withCurrentDirectory "./test" $ do
         system "rm -r output"
-        withDefaultPath "spago build -- --codegen corefn"
+        withDefaultPath "spago build --purs-args --codegen --purs-args corefn"
         _ <- compile $ CliOptions
           { printCoreFn = False
           , printTranspiled = False
           , printVersion = True
           , runProgram = True
-          , foreigns = [foreignsDirectory]
+          , foreigns = [foreignsDirectory, "src/"]
           }
         putStrLn "compiled"
         hFlush stdout

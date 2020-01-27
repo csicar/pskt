@@ -1,4 +1,4 @@
-FROM archlinux/base
+FROM archlinux/base:latest
 
 RUN pacman -Sy
 
@@ -38,15 +38,7 @@ RUN rm -rf /home/build/yay
 # do a yay system update
 RUN su build -c 'yay -Syyu --noprogressbar --noconfirm --needed'
 
-RUN su build -c 'yay -S --needed --noprogressbar --needed --noconfirm nodejs-spago'
-
-RUN su build -c 'yay -S --needed --noprogressbar --needed --noconfirm purescript-bin'
-
-RUN su build -c 'yay -S --needed --noprogressbar --needed --noconfirm stack'
-
-RUN su build -c 'yay -S --needed --noprogressbar --needed --noconfirm gradle'
-
-RUN su build -c 'yay -S --needed --noprogressbar --needed --noconfirm kotlin'
+RUN su build -c 'yay -S --needed --noprogressbar --needed --noconfirm nodejs-spago purescript-bin stack gradle kotlin'
 
 # populate caches to speed up compilation
 RUN stack setup
