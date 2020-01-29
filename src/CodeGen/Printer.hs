@@ -29,7 +29,7 @@ import CodeGen.CoreImp
 moduleToText :: Module Ann -> SimpleDocStream ()
 moduleToText mod = layoutPretty defaultLayoutOptions $ vsep $ addAnnotations $ printExpr <$> moduleToKt' mod
    where
-      addAnnotations a = "@file:Suppress(\"UNCHECKED_CAST\")" <> line : a
+      addAnnotations a = "@file:Suppress(\"UNUSED_PARAMETER\", \"UNCHECKED_CAST\", \"USELESS_CAST\")" <> line : a
 
 nest' = nest 2
 
