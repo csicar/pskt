@@ -152,8 +152,8 @@ compile opts = shake shakeOpts $ do
 
   "output/pskt/PsRuntime.kt" %> \out ->
     writeFileChanged out $ unlines
-      [ "package Foreign.PsRuntime;"
-      , "@file:Suppress(\"UNCHECKED_CAST\", \"USELESS_CAST\")"
+      [ "@file:Suppress(\"UNCHECKED_CAST\", \"USELESS_CAST\")"
+      , "package Foreign.PsRuntime;"
       , ""
       , "fun Any.app(arg: Any): Any {"
       , "   return (this as (Any) -> Any)(arg)"
@@ -164,8 +164,8 @@ compile opts = shake shakeOpts $ do
 
   "output/pskt/EntryPoint.kt" %> \out ->
     writeFileChanged out $ unlines
-      [ "import Foreign.PsRuntime.appRun;"
-      , "@file:Suppress(\"UNCHECKED_CAST\", \"USELESS_CAST\")"
+      [ "@file:Suppress(\"UNCHECKED_CAST\", \"USELESS_CAST\")"
+      , "import Foreign.PsRuntime.appRun;"
       , ""
       , "fun main() {"
       , "   PS.Main.Module.main.appRun()"
