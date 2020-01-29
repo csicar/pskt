@@ -13,10 +13,14 @@ The goal of this project is to support native android development in PureScript 
 Installation
 ------------
 
-The Linux executable can be downloaded [here](https://gitlab.com/csicar/pskt/-/jobs/artifacts/kotlin/raw/pskt?job=build)
+There are some pre-build executables available:
+  - [Archlinux](https://gitlab.com/csicar/pskt/-/jobs/artifacts/kotlin/raw/pskt?job=build)
+  - [Ubuntu](https://gitlab.com/csicar/pskt/-/jobs/artifacts/kotlin/raw/pskt?job=build-ubuntu)
+
+To build the executable:
 
 ```bash
-$ git clone ....
+$ git clone https://github.com/csicar/pskt
 $ make
 $ make install
 # pskt should no be available in your PATH

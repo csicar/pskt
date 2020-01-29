@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 50ecc0e6515bc96e3823ad6acfb02b93ba9c4dce58a8b6bf8b3621f7ac1fa8d7
+-- hash: 9d83dae6253d955578fb37ea8ea310f703f8781b568498bad298b8eed31a1219
 
 name:           pskt
 version:        0.1.0.0
@@ -115,7 +115,6 @@ test-suite pskt-test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       Glob >=0.7.0
-    , HUnit
     , aeson >=1.0 && <1.5
     , base >=4.7 && <5
     , base-compat >=0.6.0
@@ -126,6 +125,7 @@ test-suite pskt-test
     , file-embed
     , filepath
     , gitrev
+    , hspec
     , monad-parallel >=0.7.2.2 && <0.8
     , mtl >=2.1.0 && <2.3.0
     , optparse-applicative >=0.15.0
