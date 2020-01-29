@@ -8,7 +8,7 @@ Kotlin-Backend for PureScript. PsKt is forked from [purescript-native](https://g
 Why
 ---
 
-The goal of this project is to support native android development in PureScript using Kotlin. Kotlin was chosen, because it has first-class support from Android. This means, that the complete API is available through the FFI.
+The goal of this project is to support native android development in PureScript using Kotlin. Kotlin was chosen, because it has first-class support from Andsroid. This means, that the complete API is available through the FFI.
 
 Installation
 ------------
@@ -30,30 +30,25 @@ $ pskt
 Project Setup
 -------------
 
+Spago now has buildin support for alternative backends. 
+To build you project for kotlin:
+
 ```bash
 $ cd your-project
-
-# setup purescript
-$ mkdir purescript
-$ cd purescript
 $ spago init
-$ spago build --purs-args --codegen --purs-args corefn && pskt
-# transpiled files will be written to output/pskt
-# import foreign files for kotlin
-$ git clone https://github.com/csicar/pskt-foreigns ../src/main/kotlin/foreigns
-# symlink generated files
-$ ln -s output/pskt ../src/main/kotlin/generated
-```
-
-Once the next version of spago is released, there will be first class support of alternative backends.
-Then compiling and executing can be done like this:
-
-```bash
 # tell spago that you want to use the pskt backend
 $ sed -i '6 a , backend = \n    "pskt"' spago.dhall
 # now use spago normally
 $ spago build
-$ spago run
+# compiled files can be found in output/pskt
+$ ls output/pskt
+Main.kt Prelude.kt ...
+```
+
+To run build a jar file and run it, you will first need to import foreign-files:
+```bash
+$ git clone git@github.com:csicar/pskt-foreigns.git
+$ spago run --node-args --foreigns --node-args ./pskt-foreigns
 ```
 
 ### Troubleshooting
