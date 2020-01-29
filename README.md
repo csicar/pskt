@@ -14,8 +14,8 @@ Installation
 ------------
 
 There are some pre-build executables available:
-  - [Archlinux](https://gitlab.com/csicar/pskt/-/jobs/artifacts/kotlin/raw/pskt?job=build)
-  - [Ubuntu](https://gitlab.com/csicar/pskt/-/jobs/artifacts/kotlin/raw/pskt?job=build-ubuntu)
+  - [Archlinux](https://gitlab.com/csicar/pskt/-/jobs/artifacts/kotlin/download?job=build)
+  - [Ubuntu](https://gitlab.com/csicar/pskt/-/jobs/artifacts/kotlin/download?job=build-ubuntu)
 
 To build the executable:
 
