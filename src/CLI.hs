@@ -97,8 +97,7 @@ cli = CliOptions
     )
   <*> option str
     ( long "run"
-    <> help "also run the transpiled program: The entry point needs to have type `:: Effect _` "
-    <> showDefault
+    <> help "also run the transpiled program: The entry point needs to have type `:: Effect _`. Example: `-- run Main.main`"
     <> value ""
     )
   <*> many
@@ -134,10 +133,32 @@ compile opts = shake shakeOpts $ do
     need ["foreigns"]
     need ["output/pskt/PsRuntime.kt"]
     need kotlinFiles
-    case unsnoc $ split (=='.') $ runProgram opts of
-      Nothing -> pure ()
-      Just (start, end) -> do
-        writeFileLines "output/pskt/EntryPoint.kt"
+    case runProgram opts of
+      "" -> pure ()
+      mainMod -> do
+        need ["output/pskt/entryPoint" </> mainMod <.> "kt"]
+        let jarFile = "output/pskt" </> mainMod <.> "jar"
+        need [jarFile]
+        command_ [] "java" ["-jar", jarFile]
+
+  "output/pskt/*.jar" %> \out -> do
+    let modName = takeBaseName out
+    ktFiles <- fmap (\mod -> "output/pskt" </> mod <.> "kt") <$> getModuleNames
+    need ktFiles
+    need ["output/pskt/entryPoint" </> modName <.> "kt"]
+    command_
+      [AddEnv "JAVA_OPTS" "-Xmx2G -Xms256M"]
+      "kotlinc" $
+        ["output/pskt/PsRuntime.kt", "output/pskt/entryPoint" </> modName <.>"kt"] 
+        ++ ktFiles 
+        ++ ["output/pskt/foreigns" ]
+        ++ ["-include-runtime", "-d", out]
+        ++ ["-nowarn"]
+  
+  "output/pskt/entryPoint/*.kt" %> \out -> do
+    let modName = takeBaseName out
+    let Just (start, end) = unsnoc $ split (=='.') $ modName
+    writeFileLines out
           [ "@file:Suppress(\"UNCHECKED_CAST\", \"USELESS_CAST\")"
           , "import Foreign.PsRuntime.appRun;"
           , ""
@@ -145,24 +166,6 @@ compile opts = shake shakeOpts $ do
           , "   PS."<> intercalate "." start <> ".Module."<> end <> ".appRun()"
           , "}"
           ]
-        need ["run"]
-
-  phony "run" $ do
-    need ["output/pskt/program.jar"]
-    command_ [] "java" ["-jar", "output/pskt/program.jar"]
-
-  "output/pskt/program.jar" %> \out -> do
-    ktFiles <- fmap (\modName -> "output/pskt" </> modName <.> "kt") <$> getModuleNames
-    need ktFiles
-    command_
-      [AddEnv "JAVA_OPTS" "-Xmx2G -Xms256M"]
-      "kotlinc" $
-        ["output/pskt/PsRuntime.kt", "output/pskt/EntryPoint.kt"] 
-        ++ ktFiles 
-        ++ ["output/pskt/foreigns" ]
-        ++ ["-include-runtime", "-d", out]
-        ++ ["-nowarn"]
-  
 
   "output/pskt/PsRuntime.kt" %> \out ->
     writeFileChanged out $ unlines

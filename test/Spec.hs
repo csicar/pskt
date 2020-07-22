@@ -41,7 +41,7 @@ spec =
           }
         putStrLn "compiled"
         hFlush stdout
-        stdout <- readProcess "java" ["-jar", "output/pskt/program.jar"] ""
+        stdout <- readProcess "java" ["-jar", "output/pskt/Main.main.jar"] ""
         putStrLn stdout
         expectedOutput <- readFile "./src/Main.txt"
         expectedOutput `shouldBe` stdout

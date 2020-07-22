@@ -98,7 +98,8 @@ Function calls are sugared with `.app(...)` to make the generated code more read
 
 ### Bootstrapping
 
-When `pskt` is started with the `--run` option, bootstrapping will be done by the compiler. In that case, the entry point of the purescript program is expected to be `Main.main` with type `:: Effect _`.
+When `pskt` is started with the `--run <QualifiedMainFunction>` option, bootstrapping will be done by the compiler. Example: `pskt  --foreigns foreigns/ --run Main.main`
+When using `--run`, the entry point of the purescript program is expected to have type `:: Effect _`.
 
 It is also possible to do custom bootstrapping: 
 
