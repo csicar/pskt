@@ -124,10 +124,10 @@ unreserve = renameUnused
   >>> escapeReserved 
   >>> T.concatMap escapeSpecialChars
   where
-    renameUnused "$__unused" = "_"
+    renameUnused "$__unused" = "__unused"
     renameUnused t = t
 
-    prefixUnderscore "_" = "_"
+    prefixUnderscore "_" = "_underscore_"
     prefixUnderscore txt | "_" `T.isPrefixOf` txt = "_" <> txt
     prefixUnderscore txt = txt
 
