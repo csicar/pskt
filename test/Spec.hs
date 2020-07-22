@@ -36,7 +36,7 @@ spec =
           { printCoreFn = False
           , printTranspiled = False
           , printVersion = True
-          , runProgram = True
+          , runProgram = "Main.main"
           , foreigns = [foreignsDirectory, "src/"]
           }
         putStrLn "compiled"

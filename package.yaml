@@ -46,6 +46,7 @@ dependencies:
 - recursion-schemes
 - deriving-compat
 - shake
+- extra
 
 library:
   source-dirs: src

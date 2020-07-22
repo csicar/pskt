@@ -48,8 +48,10 @@ import Data.Text.Prettyprint.Doc.Util (putDocW)
 import Data.Text.Prettyprint.Doc (pretty)
 import Data.Text.Prettyprint.Doc.Render.Text (renderIO)
 import System.IO (openFile, IOMode(..), hClose, print)
+import Protolude (unsnoc)
+import Data.List.Extra (split, notNull)
 
-import Options.Applicative (many, auto, argument, metavar, help, option, long, short, Parser, ParserInfo, header, progDesc, fullDesc, helper, info, switch, value, str, (<**>))
+import Options.Applicative (many, auto, argument, showDefault, metavar, help, option, long, short, Parser, ParserInfo, header, progDesc, fullDesc, helper, info, switch, value, str, (<**>))
 
 import Text.Pretty.Simple (pPrint)
 import Version
@@ -74,7 +76,7 @@ data CliOptions = CliOptions
   { printVersion :: Bool
   , printCoreFn :: Bool
   , printTranspiled :: Bool
-  , runProgram :: Bool
+  , runProgram :: String
   , foreigns :: [FilePath]
   }
 
@@ -93,9 +95,11 @@ cli = CliOptions
     ( long "print-transpiled"
     <> help "print debug info about transpiled files"
     )
-  <*> switch
+  <*> option str
     ( long "run"
-    <> help "also run the transpiled program: The entry point is expected to be `Main.main :: Effect _` "
+    <> help "also run the transpiled program: The entry point needs to have type `:: Effect _` "
+    <> showDefault
+    <> value ""
     )
   <*> many
     ( option str
@@ -130,7 +134,18 @@ compile opts = shake shakeOpts $ do
     need ["foreigns"]
     need ["output/pskt/PsRuntime.kt"]
     need kotlinFiles
-    when (runProgram opts) $ need ["run"]
+    case unsnoc $ split (=='.') $ runProgram opts of
+      Nothing -> pure ()
+      Just (start, end) -> do
+        writeFileLines "output/pskt/EntryPoint.kt"
+          [ "@file:Suppress(\"UNCHECKED_CAST\", \"USELESS_CAST\")"
+          , "import Foreign.PsRuntime.appRun;"
+          , ""
+          , "fun main() {"
+          , "   PS."<> intercalate "." start <> ".Module."<> end <> ".appRun()"
+          , "}"
+          ]
+        need ["run"]
 
   phony "run" $ do
     need ["output/pskt/program.jar"]
@@ -139,7 +154,6 @@ compile opts = shake shakeOpts $ do
   "output/pskt/program.jar" %> \out -> do
     ktFiles <- fmap (\modName -> "output/pskt" </> modName <.> "kt") <$> getModuleNames
     need ktFiles
-    need ["output/pskt/EntryPoint.kt"]
     command_
       [AddEnv "JAVA_OPTS" "-Xmx2G -Xms256M"]
       "kotlinc" $
@@ -160,16 +174,6 @@ compile opts = shake shakeOpts $ do
       , "}"
       , ""
       , "fun Any.appRun() = (this as () -> Any)()"
-      ]
-
-  "output/pskt/EntryPoint.kt" %> \out ->
-    writeFileChanged out $ unlines
-      [ "@file:Suppress(\"UNCHECKED_CAST\", \"USELESS_CAST\")"
-      , "import Foreign.PsRuntime.appRun;"
-      , ""
-      , "fun main() {"
-      , "   PS.Main.Module.main.appRun()"
-      , "}"
       ]
 
   phony "foreigns" $ do
