@@ -8,7 +8,7 @@ Kotlin-Backend for PureScript. PsKt is forked from [purescript-native](https://g
 Why
 ---
 
-The goal of this project is to support native android development in PureScript using Kotlin. Kotlin was chosen, because it has first-class support from Andsroid. This means, that the complete API is available through the FFI.
+The goal of this project is to support native android development in PureScript using Kotlin. Kotlin was chosen, because it has first-class support from Android. This means, that the complete API is available through the FFI.
 
 Installation
 ------------
