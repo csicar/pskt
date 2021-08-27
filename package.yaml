@@ -1,14 +1,13 @@
 name:                pskt
 version:             0.1.0.0
-github:              "andyarvanitis/purescript-native"
+github:              "csicar/pskt"
 license:             BSD3
-author:              "Andy Arvanitis"
+author:              "Carsten Csiky"
 maintainer:          "example@example.com"
-copyright:           "2018 Andy Arvanitis"
+copyright:           "2020 Carsten CSiky"
 
 extra-source-files:
 - README.md
-- ChangeLog.md
 - stack.yaml
 
 # Metadata used when publishing your package
